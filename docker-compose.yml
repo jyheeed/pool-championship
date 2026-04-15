@@ -1,0 +1,80 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: pool-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pool-web
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongodb:27017/pool-championship
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      VISION_SERVICE_INTERNAL_URL: http://vision-service:8010
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://' + process.env.HOSTNAME + ':3000/api/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  vision-service:
+    build:
+      context: ./vision_service
+      dockerfile: Dockerfile
+    container_name: pool-vision
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NEXT_API_BASE_URL: http://web:3000
+      VISION_PUBLISH_PATH: /api/stream/vision-events
+      VISION_CAMERA_SOURCE: mock
+      VISION_MATCH_ID: ${VISION_MATCH_ID:-}
+      VISION_MONGO_ENABLED: ${VISION_MONGO_ENABLED:-false}
+      VISION_MONGO_URI: mongodb://mongodb:27017
+      VISION_MONGO_DB_NAME: ${VISION_MONGO_DB_NAME:-pool-championship}
+    ports:
+      - "8010:8010"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8010/health', timeout=3)"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mongo_data:

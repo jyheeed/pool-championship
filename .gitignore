@@ -1,0 +1,14 @@
+node_modules
+.next/
+.env
+.env.local
+out/
+*.tsbuildinfo
+
+.vercel
+
+# Python vision service artifacts
+**/__pycache__/
+*.pyc
+vision_service/.venv/
+vision_service/.pytest_cache/

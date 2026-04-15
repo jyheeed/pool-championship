@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: pool-vision-service
+    runtime: docker
+    rootDir: vision_service
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: VISION_SERVICE_NAME
+        value: vision-service
+      - key: VISION_CAMERA_SOURCE
+        value: mock
+      - key: VISION_CAMERA_FPS
+        value: "12"
+      - key: VISION_MOTION_THRESHOLD
+        value: "18"
+      - key: VISION_STABILIZING_THRESHOLD
+        value: "8"
+      - key: VISION_STABLE_REQUIRED_FRAMES
+        value: "15"
+      - key: VISION_STABLE_WINDOW_FRAMES
+        value: "12"
+      - key: VISION_MISSING_CONFIRM_FRAMES
+        value: "8"
+      - key: VISION_MISSING_CONFIDENCE_THRESHOLD
+        value: "0.85"
+      - key: VISION_REVIEW_LOWER_CONFIDENCE_THRESHOLD
+        value: "0.60"
+      - key: VISION_MOCK_DROP_EVERY_N_STABLE
+        value: "3"
+      - key: VISION_MOCK_DROP_SEQUENCE
+        value: ""
+      - key: VISION_PUBLISH_PATH
+        value: /api/stream/vision-events
+      - key: NEXT_API_BASE_URL
+        sync: false
+      - key: VISION_SERVICE_KEY
+        sync: false
+      - key: VISION_MONGO_ENABLED
+        value: "false"
