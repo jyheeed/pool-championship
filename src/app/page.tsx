@@ -101,6 +101,21 @@ export default async function HomePage() {
                 <p className="mt-1 text-sm text-white/60">{t.home.matchesCompleted(completedMatches.length, totalMatches)}</p>
               </div>
             </div>
+
+            <div className="flex flex-wrap gap-3 pt-1">
+              <Link href="/register" className="hero-cta hero-cta-primary">
+                {t.nav.registration}
+                <ChevronRight size={16} />
+              </Link>
+              <Link href="/fixtures" className="hero-cta hero-cta-secondary">
+                {t.home.fullSchedule}
+              </Link>
+            </div>
+
+            <div className="hero-pro-note">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/45">{t.home.professionalDirection}</p>
+              <p className="mt-2 text-sm text-white/70">{t.home.professionalText}</p>
+            </div>
           </div>
 
           <div className="panel-soft p-5">

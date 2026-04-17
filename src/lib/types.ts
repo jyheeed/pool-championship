@@ -165,30 +165,3 @@ export interface ApiResponse<T> {
   success: boolean;
 }
 
-// ── Stream/HUD Types (Phase 2) ──
-
-export interface GameState {
-  matchId: string;
-  player1: { name: string; score: number; ballsRemaining: number[] };
-  player2: { name: string; score: number; ballsRemaining: number[] };
-  currentPlayer: 1 | 2;
-  frameNumber: number;
-  status: 'waiting' | 'live' | 'break' | 'finished';
-  events: GameEvent[];
-}
-
-export interface GameEvent {
-  timestamp: number;
-  type: 'pot' | 'foul' | 'safety' | 'frame_won' | 'match_won' | 'timeout';
-  player: 1 | 2;
-  ball?: number;
-  details?: string;
-}
-
-export interface BallDetection {
-  ball: number;
-  confidence: number;
-  x: number;
-  y: number;
-  pocketed: boolean;
-}

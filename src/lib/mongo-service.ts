@@ -561,3 +561,39 @@ export async function getPlayerProfile(playerId: string): Promise<PlayerProfile 
     recentMatches: matches.slice(0, 5),
   };
 }
+
+// ── Bulk Operations ──
+
+export async function deletePlayers(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await dbConnect();
+  await PlayerModel.deleteMany({ id: { $in: ids } });
+}
+
+export async function updatePlayersBulk(ids: string[], updates: Partial<{ pool_group: string; is_seeded: boolean }>): Promise<void> {
+  if (ids.length === 0) return;
+  await dbConnect();
+  
+  const dbUpdates: Record<string, unknown> = {};
+  if (updates.pool_group !== undefined) {
+    dbUpdates.poolGroup = updates.pool_group;
+  }
+  if (updates.is_seeded !== undefined) {
+    dbUpdates.isSeeded = updates.is_seeded;
+  }
+  
+  if (Object.keys(dbUpdates).length === 0) return;
+  await PlayerModel.updateMany({ id: { $in: ids } }, dbUpdates);
+}
+
+export async function deleteMatches(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await dbConnect();
+  await MatchModel.deleteMany({ id: { $in: ids } });
+}
+
+export async function checkDuplicateEmail(email: string): Promise<boolean> {
+  await dbConnect();
+  const existing = await RegistrationModel.findOne({ email: email.toLowerCase().trim() });
+  return !!existing;
+}

@@ -1,8 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+Arabic:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+Arabic:wght@400;500;600;700;800&display=swap');
 
 :root {
   --font-display: 'Barlow Condensed', sans-serif;
@@ -198,6 +199,56 @@ a { color: inherit; text-decoration: none; }
   background: rgba(223, 31, 45, 0.2);
   border-color: rgba(223, 31, 45, 0.28);
   color: white;
+}
+
+.nav-link-cta {
+  background: linear-gradient(135deg, rgba(43, 220, 152, 0.18), rgba(7, 112, 79, 0.2));
+  border-color: rgba(43, 220, 152, 0.25);
+  color: #dcffe9;
+}
+
+.nav-link-cta:hover {
+  background: linear-gradient(135deg, rgba(43, 220, 152, 0.24), rgba(7, 112, 79, 0.28));
+  color: white;
+}
+
+.hero-cta {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.86rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  padding: 0.72rem 1.2rem;
+  transition: transform 170ms ease, box-shadow 170ms ease, background 170ms ease;
+}
+
+.hero-cta:hover {
+  transform: translateY(-1px);
+}
+
+.hero-cta-primary {
+  background: linear-gradient(135deg, rgba(223, 31, 45, 0.95), rgba(138, 11, 17, 0.96));
+  border: 1px solid rgba(255, 173, 173, 0.25);
+  box-shadow: 0 16px 34px rgba(223, 31, 45, 0.24);
+}
+
+.hero-cta-secondary {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(243, 248, 247, 0.9);
+}
+
+.hero-cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.hero-pro-note {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.18);
+  max-width: 44rem;
+  padding: 0.85rem 1rem;
 }
 
 .language-switch {

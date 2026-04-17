@@ -8,8 +8,5 @@ yarn-error.log*
 pnpm-debug.log*
 .env*
 !.env.example
-vision_service/.venv
-vision_service/__pycache__
-vision_service/.pytest_cache
 **/__pycache__
 **/*.pyc

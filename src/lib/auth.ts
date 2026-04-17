@@ -21,6 +21,26 @@ export async function signToken(payload: { username: string }): Promise<string> 
     .sign(getJwtSecretKey());
 }
 
+export async function signCameraToken(payload: { matchId: string }): Promise<string> {
+  return new SignJWT({ purpose: 'camera', ...payload })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('30m')
+    .setIssuedAt()
+    .sign(getJwtSecretKey());
+}
+
+export async function verifyCameraToken(token: string): Promise<{ matchId: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecretKey());
+    if (payload.purpose !== 'camera' || typeof payload.matchId !== 'string' || !payload.matchId) {
+      return null;
+    }
+    return { matchId: payload.matchId };
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyToken(token: string): Promise<{ username: string } | null> {
   try {
     const { payload } = await jwtVerify(token, getJwtSecretKey());
@@ -31,7 +51,12 @@ export async function verifyToken(token: string): Promise<{ username: string } |
 }
 
 export async function verifyPassword(password: string): Promise<boolean> {
-  const hash = process.env.ADMIN_PASSWORD_HASH;
+  const plainPassword = process.env.ADMIN_PASSWORD?.trim();
+  if (plainPassword) {
+    return password === plainPassword;
+  }
+
+  const hash = process.env.ADMIN_PASSWORD_HASH?.trim();
   if (!hash) {
     if (isProd) {
       throw new Error('ADMIN_PASSWORD_HASH is missing in production');

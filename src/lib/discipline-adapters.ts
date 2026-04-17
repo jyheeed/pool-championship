@@ -1,4 +1,4 @@
-import type { Discipline } from '@/lib/stream-types';
+export type Discipline = '8-ball' | '9-ball' | '10-ball';
 
 const BALL_SETS: Record<Discipline, number[]> = {
   '8-ball': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],

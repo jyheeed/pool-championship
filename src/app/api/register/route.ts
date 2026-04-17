@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { registerSchema } from '@/lib/api-schemas';
-import { addRegistration } from '@/lib/mongo-service';
+import { addRegistration, checkDuplicateEmail } from '@/lib/mongo-service';
 import type { RegistrationRow } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
   try {
     const parsed = registerSchema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json({ success: false, error: parsed.error.issues[0]?.message || 'Invalid payload' }, { status: 400 });
+      const issue = parsed.error.issues[0];
+      const message = issue?.message || 'Invalid registration data';
+      return NextResponse.json({ success: false, error: message }, { status: 400 });
     }
 
     const body = parsed.data;
+    
+    // Check for duplicate email
+    const isDuplicate = await checkDuplicateEmail(body.email);
+    if (isDuplicate) {
+      return NextResponse.json({ success: false, error: 'Email already registered. Please use a different email.' }, { status: 409 });
+    }
 
     const reg: RegistrationRow = {
       id: `reg-${Date.now()}`,

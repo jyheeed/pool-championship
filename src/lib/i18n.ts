@@ -88,7 +88,7 @@ const translations = {
       subtitle:
         'Explorez le tirage officiel du Tunisian Pool Championship 2026, avec l&apos;allocation des groupes, les têtes de série et la structure du tournoi dès le début de la compétition.',
       officialParagraph:
-        'Explore the official draw of the Tunisian Pool Championship 2026, including player group allocation, seeded players, and the tournament structure from the moment the competition begins.',
+        'Les joueurs sont répartis dans leurs poules selon leur classement. Les têtes de série sont placées en premier, puis les autres joueurs sont distribués aléatoirement pour garantir des groupes équilibrés dès le coup d\'envoi.',
       readOnly: 'Lecture seule',
       adminManaged: 'Géré par l&apos;admin',
       balancedPools: 'Poules équilibrées',
@@ -249,7 +249,7 @@ const translations = {
       subtitle:
         'Explore the official draw of the Tunisian Pool Championship 2026, including player group allocation, seeded players, and the tournament structure from the moment the competition begins.',
       officialParagraph:
-        'Explore the official draw of the Tunisian Pool Championship 2026, including player group allocation, seeded players, and the tournament structure from the moment the competition begins.',
+        'Players are distributed into their pools based on ranking. Seeded players are placed first, then the remaining players are randomly allocated to ensure balanced groups from the very first match.',
       readOnly: 'Read only',
       adminManaged: 'Admin managed',
       balancedPools: 'Balanced pools',
@@ -410,7 +410,7 @@ const translations = {
       subtitle:
         'استكشف القرعة الرسمية لبطولة تونس للبلياردو 2026، بما في ذلك توزيع اللاعبين على المجموعات، اللاعبين المصنفين، وهيكل البطولة منذ انطلاق المنافسة.',
       officialParagraph:
-        'Explore the official draw of the Tunisian Pool Championship 2026, including player group allocation, seeded players, and the tournament structure from the moment the competition begins.',
+        'يتم توزيع اللاعبين على مجموعاتهم بناءً على ترتيبهم. يُوضع المصنفون أولاً، ثم يُوزَّع اللاعبون المتبقون عشوائياً لضمان مجموعات متوازنة منذ أول مباراة.',
       readOnly: 'عرض فقط',
       adminManaged: 'تحت إدارة المشرف',
       balancedPools: 'مجموعات متوازنة',

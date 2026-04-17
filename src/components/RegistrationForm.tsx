@@ -179,9 +179,41 @@ export default function RegistrationForm({ language }: { language: Language }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const needsCin = Number(form.age) >= 18;
+
+  const validateField = (key: string, value: string): string | null => {
+    if (key === 'name' && !value.trim()) return 'Full name is required';
+    if (key === 'email' && !value.trim()) return 'Email is required';
+    if (key === 'email' && value.trim() && !value.includes('@')) return 'Please enter a valid email';
+    if (key === 'phone' && !value.trim()) return 'Phone number is required';
+    if (key === 'city' && !value.trim()) return 'City is required';
+    if (key === 'age' && !value) return 'Age is required';
+    if (key === 'age' && (Number(value) < 5 || Number(value) > 99)) return 'Age must be between 5 and 99';
+    if (key === 'cin' && needsCin && !value.trim()) return 'CIN is required for players 18 and older';
+    return null;
+  };
+
+  const handleFieldBlur = (key: string) => {
+    const error = validateField(key, form[key as keyof typeof form]);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (error) next[key] = error;
+      else delete next[key];
+      return next;
+    });
+  };
+
+  const handleFieldChange = (key: string, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   const handlePhotoUpload = async (file: File | null) => {
     if (!file) {
@@ -243,6 +275,25 @@ export default function RegistrationForm({ language }: { language: Language }) {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
+
+    // Final validation
+    const errors: Record<string, string> = {};
+    const requiredFields = ['name', 'email', 'phone', 'city', 'age'];
+    requiredFields.forEach((field) => {
+      const err = validateField(field, form[field as keyof typeof form]);
+      if (err) errors[field] = err;
+    });
+    if (needsCin) {
+      const cinErr = validateField('cin', form.cin);
+      if (cinErr) errors.cin = cinErr;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch('/api/register', {
@@ -254,7 +305,14 @@ export default function RegistrationForm({ language }: { language: Language }) {
       if (data.success) {
         setSuccess(true);
       } else {
-        setError(data.error || copy.hints.generic);
+        // Show specific error messages
+        if (res.status === 409) {
+          setError('This email is already registered. Please use a different email address.');
+        } else if (data.error) {
+          setError(data.error);
+        } else {
+          setError(copy.hints.generic);
+        }
       }
     } catch {
       setError(copy.hints.connection);
@@ -324,12 +382,13 @@ export default function RegistrationForm({ language }: { language: Language }) {
 
         <form onSubmit={submit} className="space-y-3">
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label={copy.labels.fullName}>
+            <Field label={copy.labels.fullName} error={fieldErrors.name}>
               <input
                 required
-                className={compactInputClass}
+                className={`${compactInputClass} ${fieldErrors.name ? 'border-red-500 focus:ring-red-500/50' : ''}`}
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(e) => handleFieldChange('name', e.target.value)}
+                onBlur={() => handleFieldBlur('name')}
                 placeholder={copy.placeholders.fullName}
               />
             </Field>
@@ -352,54 +411,60 @@ export default function RegistrationForm({ language }: { language: Language }) {
               />
             </Field>
 
-            <Field label={copy.labels.age}>
+            <Field label={copy.labels.age} error={fieldErrors.age}>
               <input
                 required
                 type="number"
                 min={5}
-                className={compactInputClass}
+                max={99}
+                className={`${compactInputClass} ${fieldErrors.age ? 'border-red-500 focus:ring-red-500/50' : ''}`}
                 value={form.age}
-                onChange={(e) => setForm({ ...form, age: e.target.value })}
+                onChange={(e) => handleFieldChange('age', e.target.value)}
+                onBlur={() => handleFieldBlur('age')}
               />
             </Field>
 
-            <Field label={copy.labels.email}>
+            <Field label={copy.labels.email} error={fieldErrors.email}>
               <input
                 required
                 type="email"
-                className={compactInputClass}
+                className={`${compactInputClass} ${fieldErrors.email ? 'border-red-500 focus:ring-red-500/50' : ''}`}
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                onChange={(e) => handleFieldChange('email', e.target.value)}
+                onBlur={() => handleFieldBlur('email')}
                 placeholder={copy.placeholders.email}
               />
             </Field>
 
-            <Field label={copy.labels.phone}>
+            <Field label={copy.labels.phone} error={fieldErrors.phone}>
               <input
                 required
-                className={compactInputClass}
+                className={`${compactInputClass} ${fieldErrors.phone ? 'border-red-500 focus:ring-red-500/50' : ''}`}
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                onChange={(e) => handleFieldChange('phone', e.target.value)}
+                onBlur={() => handleFieldBlur('phone')}
                 placeholder={copy.placeholders.phone}
               />
             </Field>
 
-            <Field label={copy.labels.city}>
+            <Field label={copy.labels.city} error={fieldErrors.city}>
               <input
                 required
-                className={compactInputClass}
+                className={`${compactInputClass} ${fieldErrors.city ? 'border-red-500 focus:ring-red-500/50' : ''}`}
                 value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                onChange={(e) => handleFieldChange('city', e.target.value)}
+                onBlur={() => handleFieldBlur('city')}
                 placeholder={copy.placeholders.city}
               />
             </Field>
 
-            <Field label={needsCin ? copy.labels.cinRequired : copy.labels.cinOptional}>
+            <Field label={needsCin ? copy.labels.cinRequired : copy.labels.cinOptional} error={fieldErrors.cin}>
               <input
                 required={needsCin}
-                className={compactInputClass}
+                className={`${compactInputClass} ${fieldErrors.cin ? 'border-red-500 focus:ring-red-500/50' : ''}`}
                 value={form.cin}
-                onChange={(e) => setForm({ ...form, cin: e.target.value })}
+                onChange={(e) => handleFieldChange('cin', e.target.value)}
+                onBlur={() => handleFieldBlur('cin')}
                 placeholder={needsCin ? copy.placeholders.cinRequired : copy.placeholders.cinOptional}
               />
             </Field>
@@ -477,11 +542,12 @@ export default function RegistrationForm({ language }: { language: Language }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[#3b4554] md:text-[11px]">{label}</label>
+      <label className={`text-[10px] font-semibold uppercase tracking-[0.04em] md:text-[11px] ${error ? 'text-red-600' : 'text-[#3b4554]'}`}>{label}</label>
       {children}
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }

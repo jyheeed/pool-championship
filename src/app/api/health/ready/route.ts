@@ -3,47 +3,21 @@ import dbConnect from '@/lib/mongodb';
 
 export const runtime = 'nodejs';
 
-function normalizeOptionalUrl(value?: string) {
-  const raw = value?.trim();
-  if (!raw || raw === 'undefined' || raw === 'null') {
-    return '';
-  }
-  return raw;
-}
-
-async function checkVisionService() {
-  const base = normalizeOptionalUrl(process.env.VISION_SERVICE_INTERNAL_URL);
-  if (!base) {
-    return { configured: false, ok: true };
-  }
-
-  try {
-    const res = await fetch(`${base.replace(/\/$/, '')}/health`, { cache: 'no-store' });
-    return { configured: true, ok: res.ok, status: res.status };
-  } catch {
-    return { configured: true, ok: false };
-  }
-}
-
 export async function GET() {
   try {
     await dbConnect();
-    const vision = await checkVisionService();
-
-    const ready = vision.ok;
     return NextResponse.json(
       {
-        success: ready,
+        success: true,
         service: 'pool-web',
-        status: ready ? 'ready' : 'degraded',
+        status: 'ready',
         checks: {
           mongodb: true,
-          vision,
         },
         deploymentTag: 'vercel-ready-2026-04-15-a',
         timestamp: new Date().toISOString(),
       },
-      { status: ready ? 200 : 503 }
+      { status: 200 }
     );
   } catch (error) {
     return NextResponse.json(

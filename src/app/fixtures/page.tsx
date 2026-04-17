@@ -6,6 +6,12 @@ import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, 
 
 export const revalidate = 60;
 
+type FixturesSearchParams = {
+  q?: string;
+  status?: string;
+  round?: string;
+};
+
 type UpcomingEvent = {
   id: string;
   title: string;
@@ -28,7 +34,7 @@ function pickVenue(clubs: Club[], seed: string): string {
   return clubs[venueIndex].name;
 }
 
-export default async function FixturesPage() {
+export default async function FixturesPage({ searchParams }: { searchParams?: FixturesSearchParams }) {
   const language = normalizeLanguage(cookies().get(LANGUAGE_COOKIE)?.value ?? DEFAULT_LANGUAGE);
   const t = getTranslations(language);
 
@@ -51,6 +57,24 @@ export default async function FixturesPage() {
     settings = { name: 'Pool Championship', season: '2026', pointsWin: 3, pointsLoss: 0 };
   }
 
+  const q = (searchParams?.q || '').trim().toLowerCase();
+  const selectedStatus = (searchParams?.status || '').trim();
+  const selectedRound = (searchParams?.round || '').trim();
+
+  const filteredFixtures = fixtures.filter((match) => {
+    if (selectedStatus && match.status !== selectedStatus) return false;
+    if (selectedRound && match.round !== selectedRound) return false;
+    if (!q) return true;
+
+    const haystack = [match.player1Name, match.player2Name, match.venue || '', match.date, match.round]
+      .join(' ')
+      .toLowerCase();
+
+    return haystack.includes(q);
+  });
+
+  const roundsList = Array.from(new Set(fixtures.map((match) => match.round).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+
   const upcomingEvents: UpcomingEvent[] = [
     {
       id: 'group-stage',
@@ -68,12 +92,22 @@ export default async function FixturesPage() {
     },
   ];
 
-  const rounds = fixtures.reduce<Record<string, Match[]>>((acc, match) => {
+  const rounds = filteredFixtures.reduce<Record<string, Match[]>>((acc, match) => {
     const key = match.round || 'TBD';
     if (!acc[key]) acc[key] = [];
     acc[key].push(match);
     return acc;
   }, {});
+
+  const isFr = language === 'fr';
+  const searchLabel = isFr ? 'Recherche' : 'Search';
+  const searchPlaceholder = isFr ? 'Joueur, date, lieu, tour' : 'Player, date, venue, round';
+  const statusLabel = isFr ? 'Statut' : 'Status';
+  const allStatusLabel = isFr ? 'Tous les statuts' : 'All statuses';
+  const roundLabel = isFr ? 'Tour' : 'Round';
+  const allRoundsLabel = isFr ? 'Tous les tours' : 'All rounds';
+  const applyLabel = isFr ? 'Appliquer' : 'Apply';
+  const resetLabel = isFr ? 'Reinitialiser' : 'Reset';
 
   return (
     <div className="space-y-8 animate-in">
@@ -86,8 +120,38 @@ export default async function FixturesPage() {
               {t.fixtures.subtitle}
             </p>
           </div>
-          <div className="status-pill status-scheduled">{t.fixtures.fixturesCount(fixtures.length)}</div>
+          <div className="status-pill status-scheduled">{t.fixtures.fixturesCount(filteredFixtures.length)}</div>
         </div>
+
+        <form className="mt-5 grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 sm:grid-cols-2 md:gap-3 md:p-4 md:grid-cols-[1.5fr_1fr_1fr_auto_auto] md:items-end" method="GET">
+          <label className="block text-xs uppercase tracking-[0.16em] text-white/50">
+            {searchLabel}
+            <input name="q" defaultValue={searchParams?.q || ''} placeholder={searchPlaceholder} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 text-sm focus:border-[var(--accent-red)] focus:outline-none" />
+          </label>
+
+          <label className="block text-xs uppercase tracking-[0.16em] text-white/50">
+            {statusLabel}
+            <select name="status" defaultValue={selectedStatus} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 text-sm focus:border-[var(--accent-red)] focus:outline-none">
+              <option value="">{allStatusLabel}</option>
+              <option value="scheduled">{translateStatus(language, 'scheduled')}</option>
+              <option value="live">{translateStatus(language, 'live')}</option>
+              <option value="postponed">{translateStatus(language, 'postponed')}</option>
+            </select>
+          </label>
+
+          <label className="block text-xs uppercase tracking-[0.16em] text-white/50">
+            {roundLabel}
+            <select name="round" defaultValue={selectedRound} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 text-sm focus:border-[var(--accent-red)] focus:outline-none">
+              <option value="">{allRoundsLabel}</option>
+              {roundsList.map((round) => (
+                <option key={round} value={round}>{round}</option>
+              ))}
+            </select>
+          </label>
+
+          <button type="submit" className="rounded-lg bg-[var(--accent-red)] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110 sm:col-start-1 md:col-start-auto md:row-start-auto">{applyLabel}</button>
+          <a href="/fixtures" className="rounded-lg border border-[var(--border)] px-4 py-2 text-center text-sm text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]">{resetLabel}</a>
+        </form>
       </section>
 
       <section className="space-y-3">
@@ -125,7 +189,7 @@ export default async function FixturesPage() {
           <section key={round} className="space-y-3">
             <div className="flex items-center gap-3">
               <CalendarDays size={18} className="text-[var(--accent-blue)]" />
-              <h2 className="text-2xl font-semibold">{language === 'fr' || language === 'ar' ? `${t.fixtures.roundLabel} ${round}` : round}</h2>
+              <h2 className="text-2xl font-semibold">{isFr ? `${t.fixtures.roundLabel} ${round}` : round}</h2>
             </div>
 
             <div className="space-y-3 stagger">

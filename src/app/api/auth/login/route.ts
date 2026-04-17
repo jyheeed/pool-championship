@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { username, password } = parsed.data;
-    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+    const adminUsername = process.env.ADMIN_USERNAME?.trim() || 'admin';
 
     if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_USERNAME) {
       return NextResponse.json({ success: false, error: 'ADMIN_USERNAME is missing in production' }, { status: 500 });
@@ -50,10 +50,19 @@ export async function POST(req: NextRequest) {
 
     const token = await signToken({ username });
 
+    const secureCookieOverride = process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase();
+    const forceSecureCookie = secureCookieOverride === 'true';
+    const forceInsecureCookie = secureCookieOverride === 'false';
+    const isLocalHost = req.nextUrl.hostname === 'localhost' || req.nextUrl.hostname === '127.0.0.1';
+    const shouldUseSecureCookie = forceInsecureCookie
+      ? false
+      : forceSecureCookie
+        ? true
+        : process.env.NODE_ENV === 'production' && !isLocalHost;
     const res = NextResponse.json({ success: true });
     res.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: shouldUseSecureCookie,
       sameSite: 'lax',
       maxAge: 60 * 60 * 8, // 8 hours
       path: '/',

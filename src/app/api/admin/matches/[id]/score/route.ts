@@ -4,7 +4,6 @@ import { internalServerError } from '@/lib/api-errors';
 import { scoreUpdateSchema } from '@/lib/api-schemas';
 import dbConnect from '@/lib/mongodb';
 import MatchModel from '@/models/Match';
-import { syncOverlayFromMatch } from '@/lib/stream-state-service';
 
 export async function PATCH(
   req: NextRequest,
@@ -39,8 +38,6 @@ export async function PATCH(
     if (!match) {
       return NextResponse.json({ success: false, error: 'Match not found' }, { status: 404 });
     }
-
-    await syncOverlayFromMatch(id, 'Match score updated by operator');
 
     return NextResponse.json({ success: true, data: match });
   } catch (error: unknown) {

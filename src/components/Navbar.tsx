@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { CalendarDays, Gauge, LayoutGrid, Radio, Trophy, Users, UserPlus } from 'lucide-react';
+import { CalendarDays, Gauge, LayoutGrid, Trophy, Users, UserPlus } from 'lucide-react';
 import { getLanguageName, getTranslations, LANGUAGE_COOKIE, type Language } from '@/lib/i18n';
 
 const NAV = [
@@ -83,11 +83,12 @@ export default function Navbar({ initialLanguage }: { initialLanguage: Language 
           {NAV.map(({ href, key, icon: Icon }) => {
             const label = translations.nav[key as keyof typeof translations.nav] as string;
             const active = path === href;
+            const isRegistration = href === '/register';
             return (
               <Link
                 key={href}
                 href={href}
-                className={`nav-link ${active ? 'nav-link-active' : ''}`}
+                className={`nav-link ${active ? 'nav-link-active' : ''} ${!active && isRegistration ? 'nav-link-cta' : ''}`}
               >
                 <Icon size={15} />
                 <span>{label}</span>
@@ -95,10 +96,6 @@ export default function Navbar({ initialLanguage }: { initialLanguage: Language 
             );
           })}
 
-          <Link href="/stream" className={`nav-link ${path === '/stream' ? 'nav-link-live-active' : 'nav-link-live'}`}>
-            <Radio size={15} />
-            <span>{translations.nav.arenaHud}</span>
-          </Link>
         </div>
       </div>
     </header>

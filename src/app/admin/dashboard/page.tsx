@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Shield, Save, Trash2, LogOut, Users, Swords, RefreshCw, Settings, Building2, UserCheck, Shuffle, Radio, Play, Square, Link as LinkIcon } from 'lucide-react';
+import { Shield, Save, Trash2, LogOut, Users, Swords, RefreshCw, Settings, Building2, UserCheck, Shuffle } from 'lucide-react';
 import { normalizeLanguage, type Language } from '@/lib/i18n';
 
 const LANGUAGE_COOKIE = 'pool-lang';
@@ -127,7 +126,7 @@ const emptyClub: ClubForm = { id: '', name: '', city: '', logo_url: '' };
 export default function AdminDashboard() {
   const router = useRouter();
   const [language, setLanguage] = useState<Language>('fr');
-  const [tab, setTab] = useState<'players' | 'matches' | 'clubs' | 'registrations' | 'settings' | 'stream'>('players');
+  const [tab, setTab] = useState<'players' | 'matches' | 'clubs' | 'registrations' | 'settings'>('players');
   const [players, setPlayers] = useState<PlayerForm[]>([]);
   const [matches, setMatches] = useState<MatchForm[]>([]);
   const [clubs, setClubs] = useState<ClubForm[]>([]);
@@ -144,34 +143,23 @@ export default function AdminDashboard() {
   const [matchQuery, setMatchQuery] = useState('');
   const [clubQuery, setClubQuery] = useState('');
   const [groupNames, setGroupNames] = useState(DEFAULT_GROUP_NAMES);
-  const [streamMatchId, setStreamMatchId] = useState('');
-  const [streamLiveMatchId, setStreamLiveMatchId] = useState('');
-  const [visionState, setVisionState] = useState<{
-    configured: boolean;
-    healthOk: boolean;
-    ready: boolean;
-    activeMatchId: string;
-    running?: boolean;
-    lastError?: string;
-    tableState?: string;
-  } | null>(null);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+  const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
-      const [pRes, mRes, cRes, sRes, rRes, streamRes] = await Promise.all([
+      const [pRes, mRes, cRes, sRes, rRes] = await Promise.all([
         fetch('/api/public/players'),
         fetch('/api/public/matches'),
         fetch('/api/public/clubs'),
         fetch('/api/admin/settings'),
         fetch('/api/admin/registrations'),
-        fetch('/api/admin/stream/control'),
       ]);
       const pData = await pRes.json();
       const mData = await mRes.json();
       const cData = await cRes.json();
       const sData = await sRes.json();
       const rData = await rRes.json();
-      const streamData = await streamRes.json();
 
       if (pData.data) {
         setPlayers(
@@ -207,9 +195,6 @@ export default function AdminDashboard() {
           }));
 
         setMatches(nextMatches);
-        if (nextMatches.length > 0) {
-          setStreamMatchId((prev) => prev || nextMatches[0].id);
-        }
       }
 
       if (cData.data) {
@@ -239,15 +224,6 @@ export default function AdminDashboard() {
         });
       }
 
-      if (streamData?.data) {
-        setStreamLiveMatchId(streamData.data.liveMatchId || '');
-        if (streamData.data.vision) {
-          setVisionState(streamData.data.vision);
-          if (streamData.data.vision.activeMatchId) {
-            setStreamMatchId(streamData.data.vision.activeMatchId);
-          }
-        }
-      }
     } catch {
       setMsg(tx(language, 'Erreur lors du chargement des données admin', 'Error while loading admin data', 'خطأ أثناء تحميل بيانات الإدارة'));
     }
@@ -477,6 +453,112 @@ export default function AdminDashboard() {
     setLoading(false);
   }
 
+  function togglePlayerSelection(playerId: string) {
+    const next = new Set(selectedPlayerIds);
+    if (next.has(playerId)) next.delete(playerId);
+    else next.add(playerId);
+    setSelectedPlayerIds(next);
+  }
+
+  function toggleMatchSelection(matchId: string) {
+    const next = new Set(selectedMatchIds);
+    if (next.has(matchId)) next.delete(matchId);
+    else next.add(matchId);
+    setSelectedMatchIds(next);
+  }
+
+  function selectAllFilteredPlayers() {
+    if (selectedPlayerIds.size === filteredPlayers.length) {
+      setSelectedPlayerIds(new Set());
+    } else {
+      setSelectedPlayerIds(new Set(filteredPlayers.map((p) => p.id)));
+    }
+  }
+
+  function selectAllFilteredMatches() {
+    if (selectedMatchIds.size === filteredMatches.length) {
+      setSelectedMatchIds(new Set());
+    } else {
+      setSelectedMatchIds(new Set(filteredMatches.map((m) => m.id)));
+    }
+  }
+
+  async function bulkSeedPlayers() {
+    if (selectedPlayerIds.size === 0 || !confirm(tx(language, 'Classer ces joueurs comme têtes de série ?', 'Seed these players?', 'تصنيف هؤلاء اللاعبين؟'))) return;
+    setLoading(true);
+    const availableGroups = groupNames.split(',').map((n) => n.trim()).filter(Boolean);
+    const group = window.prompt(tx(language, 'Groupe pour les têtes de série :', 'Group for seeded players:', 'المجموعة للمصنفين:'), availableGroups[0] || 'Group A');
+    if (!group) { setLoading(false); return; }
+    
+    const ids = Array.from(selectedPlayerIds);
+    const res = await fetch('/api/admin/players/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'seed', ids, poolGroup: group }),
+    });
+    const d = await res.json();
+    flash(d.success ? tx(language, `${ids.length} joueurs classés`, `${ids.length} players seeded`, `${ids.length} تم تصنيف اللاعبين`) : d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+    if (d.success) {
+      setSelectedPlayerIds(new Set());
+      await load();
+    }
+    setLoading(false);
+  }
+
+  async function bulkUnseedPlayers() {
+    if (selectedPlayerIds.size === 0 || !confirm(tx(language, 'Retirer le classement de ces joueurs ?', 'Unseed these players?', 'إلغاء تصنيف هؤلاء اللاعبين؟'))) return;
+    setLoading(true);
+    const ids = Array.from(selectedPlayerIds);
+    const res = await fetch('/api/admin/players/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'unseed', ids }),
+    });
+    const d = await res.json();
+    flash(d.success ? tx(language, `${ids.length} joueurs non classés`, `${ids.length} players unseeded`, `${ids.length} تم إلغاء تصنيف اللاعبين`) : d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+    if (d.success) {
+      setSelectedPlayerIds(new Set());
+      await load();
+    }
+    setLoading(false);
+  }
+
+  async function bulkDeletePlayers() {
+    if (selectedPlayerIds.size === 0 || !confirm(tx(language, `Supprimer ${selectedPlayerIds.size} joueur(s) ?`, `Delete ${selectedPlayerIds.size} player(s)?`, `حذف ${selectedPlayerIds.size} لاعب/لاعبين؟`))) return;
+    setLoading(true);
+    const ids = Array.from(selectedPlayerIds);
+    const res = await fetch('/api/admin/players/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', ids }),
+    });
+    const d = await res.json();
+    flash(d.success ? tx(language, `${ids.length} joueurs supprimés`, `${ids.length} players deleted`, `${ids.length} تم حذف اللاعبين`) : d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+    if (d.success) {
+      setSelectedPlayerIds(new Set());
+      await load();
+    }
+    setLoading(false);
+  }
+
+  async function bulkDeleteMatches() {
+    if (selectedMatchIds.size === 0 || !confirm(tx(language, `Supprimer ${selectedMatchIds.size} match(s) ?`, `Delete ${selectedMatchIds.size} match(es)?`, `حذف ${selectedMatchIds.size} مباراة/مباريات؟`))) return;
+    setLoading(true);
+    const ids = Array.from(selectedMatchIds);
+    const res = await fetch('/api/admin/matches/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', ids }),
+    });
+    const d = await res.json();
+    flash(d.success ? tx(language, `${ids.length} matchs supprimés`, `${ids.length} matches deleted`, `${ids.length} تم حذف المباريات`) : d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+    if (d.success) {
+      setSelectedMatchIds(new Set());
+      await load();
+    }
+    setLoading(false);
+  }
+
   async function deleteClub() {
     if (!editing || !confirm(tx(language, 'Supprimer ce club ?', 'Delete this club?', 'حذف هذا النادي؟'))) return;
     setLoading(true);
@@ -488,39 +570,6 @@ export default function AdminDashboard() {
       setEditing(null);
       await load();
     }
-    setLoading(false);
-  }
-
-  async function controlStream(action: 'start_stream' | 'stop_stream') {
-    if (action === 'start_stream' && !streamMatchId) {
-      flash(tx(language, 'Sélectionnez un match avant de lancer le direct', 'Select a match before going live', 'اختر مباراة قبل بدء البث'));
-      return;
-    }
-
-    setLoading(true);
-    const res = await fetch('/api/admin/stream/control', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action,
-        matchId: streamMatchId,
-      }),
-    });
-    const d = await res.json();
-
-    if (!d.success) {
-      flash(d.error || tx(language, 'Erreur streaming', 'Streaming error', 'خطأ في البث'));
-      setLoading(false);
-      return;
-    }
-
-    flash(
-      action === 'start_stream'
-        ? tx(language, 'Direct activé depuis l’admin', 'Live stream activated from admin', 'تم تفعيل البث المباشر من الإدارة')
-        : tx(language, 'Direct arrêté depuis l’admin', 'Live stream stopped from admin', 'تم إيقاف البث المباشر من الإدارة')
-    );
-
-    await load();
     setLoading(false);
   }
 
@@ -542,7 +591,7 @@ export default function AdminDashboard() {
     setTab('clubs');
   }
 
-  function resetForms(nextTab: 'players' | 'matches' | 'clubs' | 'registrations' | 'settings' | 'stream') {
+  function resetForms(nextTab: 'players' | 'matches' | 'clubs' | 'registrations' | 'settings') {
     setTab(nextTab);
     setEditing(null);
     setPlayerForm(emptyPlayer);
@@ -607,7 +656,6 @@ export default function AdminDashboard() {
           { key: 'players' as const, label: tx(language, 'Joueurs', 'Players', 'اللاعبون'), icon: Users },
           { key: 'registrations' as const, label: `${tx(language, 'Inscriptions', 'Registrations', 'التسجيلات')} ${pendingRegistrations.length > 0 ? `(${pendingRegistrations.length})` : ''}`, icon: UserCheck },
           { key: 'matches' as const, label: tx(language, 'Matchs', 'Matches', 'المباريات'), icon: Swords },
-          { key: 'stream' as const, label: tx(language, 'Streaming', 'Streaming', 'البث'), icon: Radio },
           { key: 'clubs' as const, label: tx(language, 'Clubs', 'Clubs', 'الأندية'), icon: Building2 },
           { key: 'settings' as const, label: tx(language, 'Paramètres', 'Settings', 'الإعدادات'), icon: Settings },
         ].map(({ key, label, icon: Icon }) => (
@@ -706,16 +754,43 @@ export default function AdminDashboard() {
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 text-sm focus:border-[var(--accent-red)] focus:outline-none md:max-w-xs"
               />
             </div>
+
+            {selectedPlayerIds.size > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--accent-blue)]/30 bg-[var(--accent-blue)]/5 p-3">
+                <span className="text-sm font-mono text-[var(--text-secondary)]">{selectedPlayerIds.size} {tx(language, 'sélectionné(s)', 'selected', 'تم اختيارهم')}</span>
+                <button onClick={bulkSeedPlayers} disabled={loading} className="text-xs rounded px-2 py-1 bg-[rgba(255,194,71,0.12)] text-[var(--accent-gold)] hover:bg-[rgba(255,194,71,0.18)] disabled:opacity-40">{tx(language, 'Classer', 'Seed all', 'تصنيف الكل')}</button>
+                <button onClick={bulkUnseedPlayers} disabled={loading} className="text-xs rounded px-2 py-1 bg-[rgba(255,194,71,0.12)] text-[var(--accent-gold)] hover:bg-[rgba(255,194,71,0.18)] disabled:opacity-40">{tx(language, 'Retirer', 'Unseed all', 'إلغاء الكل')}</button>
+                <button onClick={bulkDeletePlayers} disabled={loading} className="text-xs rounded px-2 py-1 bg-red-500/12 text-red-400 hover:bg-red-500/18 disabled:opacity-40">{tx(language, 'Supprimer', 'Delete all', 'حذف الكل')}</button>
+                <button onClick={() => setSelectedPlayerIds(new Set())} className="ml-auto text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">✕</button>
+              </div>
+            )}
+
             <div className="mt-4 overflow-x-auto">
               <table className="w-full standings-table">
                 <thead>
                   <tr className="bg-[var(--bg-secondary)]">
+                    <th style={{width: '32px'}}>
+                      <input
+                        type="checkbox"
+                        checked={selectedPlayerIds.size === filteredPlayers.length && filteredPlayers.length > 0}
+                        onChange={selectAllFilteredPlayers}
+                        className="cursor-pointer"
+                      />
+                    </th>
                     <th>ID</th><th>{tx(language, 'Nom', 'Name', 'الاسم')}</th><th>{tx(language, 'Club', 'Club', 'النادي')}</th><th>{tx(language, 'Groupe', 'Group', 'المجموعة')}</th><th>{tx(language, 'Tête', 'Seed', 'تصنيف')}</th><th>{tx(language, 'Nationalité', 'Nationality', 'الجنسية')}</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredPlayers.map((p) => (
                     <tr key={p.id}>
+                      <td style={{width: '32px'}}>
+                        <input
+                          type="checkbox"
+                          checked={selectedPlayerIds.has(p.id)}
+                          onChange={() => togglePlayerSelection(p.id)}
+                          className="cursor-pointer"
+                        />
+                      </td>
                       <td className="font-mono text-xs">{p.id}</td>
                       <td className="text-sm font-medium">{p.name}</td>
                       <td className="text-sm text-[var(--text-secondary)]">{p.club || '—'}</td>
@@ -737,7 +812,7 @@ export default function AdminDashboard() {
                   ))}
                   {filteredPlayers.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
                         {tx(language, 'Aucun joueur pour le moment. Utilisez le formulaire ci-dessus pour ajouter votre premier inscrit.', 'No players yet. Use the form above to add your first registration.', 'لا يوجد لاعبون بعد. استخدم النموذج أعلاه لإضافة أول تسجيل.')}
                       </td>
                     </tr>
@@ -912,15 +987,41 @@ export default function AdminDashboard() {
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 text-sm focus:border-[var(--accent-red)] focus:outline-none md:max-w-xs"
               />
             </div>
+
+            {selectedMatchIds.size > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+                <span className="text-sm font-mono text-[var(--text-secondary)]">{selectedMatchIds.size} {tx(language, 'sélectionné(s)', 'selected', 'تم اختيارهم')}</span>
+                <button onClick={bulkDeleteMatches} disabled={loading} className="text-xs rounded px-2 py-1 bg-red-500/12 text-red-400 hover:bg-red-500/18 disabled:opacity-40">{tx(language, 'Supprimer', 'Delete all', 'حذف الكل')}</button>
+                <button onClick={() => setSelectedMatchIds(new Set())} className="ml-auto text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">✕</button>
+              </div>
+            )}
+
             <div className="mt-4 overflow-x-auto">
               <table className="w-full standings-table">
-                <thead><tr className="bg-[var(--bg-secondary)]"><th>ID</th><th>{tx(language, 'Tour', 'Round', 'الدور')}</th><th>{tx(language, 'Date', 'Date', 'التاريخ')}</th><th>{tx(language, 'Joueur 1', 'Player 1', 'اللاعب 1')}</th><th>{tx(language, 'Score', 'Score', 'النتيجة')}</th><th>{tx(language, 'Joueur 2', 'Player 2', 'اللاعب 2')}</th><th>{tx(language, 'Statut', 'Status', 'الحالة')}</th><th></th></tr></thead>
+                <thead><tr className="bg-[var(--bg-secondary)]">
+                  <th style={{width: '32px'}}>
+                    <input
+                      type="checkbox"
+                      checked={selectedMatchIds.size === filteredMatches.length && filteredMatches.length > 0}
+                      onChange={selectAllFilteredMatches}
+                      className="cursor-pointer"
+                    />
+                  </th>
+                  <th>ID</th><th>{tx(language, 'Tour', 'Round', 'الدور')}</th><th>{tx(language, 'Date', 'Date', 'التاريخ')}</th><th>{tx(language, 'Joueur 1', 'Player 1', 'اللاعب 1')}</th><th>{tx(language, 'Score', 'Score', 'النتيجة')}</th><th>{tx(language, 'Joueur 2', 'Player 2', 'اللاعب 2')}</th><th>{tx(language, 'Statut', 'Status', 'الحالة')}</th><th></th></tr></thead>
                 <tbody>
                   {filteredMatches.map((m) => {
                     const p1Name = players.find((p) => p.id === m.player1_id)?.name || m.player1_id;
                     const p2Name = players.find((p) => p.id === m.player2_id)?.name || m.player2_id;
                     return (
                       <tr key={m.id}>
+                        <td style={{width: '32px'}}>
+                          <input
+                            type="checkbox"
+                            checked={selectedMatchIds.has(m.id)}
+                            onChange={() => toggleMatchSelection(m.id)}
+                            className="cursor-pointer"
+                          />
+                        </td>
                         <td className="font-mono text-xs">{m.id}</td>
                         <td className="text-sm">{m.round}</td>
                         <td className="font-mono text-xs">{m.date}</td>
@@ -931,13 +1032,6 @@ export default function AdminDashboard() {
                         <td>
                           <div className="flex gap-2">
                             <button onClick={() => editMatch(m)} className="text-xs text-[var(--accent-blue)] hover:underline">{tx(language, 'Modifier', 'Edit', 'تعديل')}</button>
-                            <Link 
-                              href={`/stream?matchId=${m.id}`} 
-                              target="_blank"
-                              className="text-xs text-[var(--accent-red)] hover:underline flex items-center gap-1"
-                            >
-                              <Radio size={10} /> {tx(language, 'Lancer Arène', 'Launch Arena', 'تشغيل الساحة')}
-                            </Link>
                             <button onClick={() => deleteMatch(m.id)} className="text-xs text-red-400 hover:underline">{tx(language, 'Supprimer', 'Delete', 'حذف')}</button>
                           </div>
                         </td>
@@ -946,7 +1040,7 @@ export default function AdminDashboard() {
                   })}
                   {filteredMatches.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+                      <td colSpan={9} className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
                         {tx(language, 'Aucun match planifié pour le moment. Créez votre première affiche via le formulaire ci-dessus.', 'No matches scheduled yet. Create your first fixture from the form above.', 'لا توجد مباريات مجدولة حتى الآن. أنشئ أول مباراة من النموذج أعلاه.')}
                       </td>
                     </tr>
@@ -980,91 +1074,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {tab === 'stream' && (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-            <h2 className="mb-2 font-display text-lg">{tx(language, 'Contrôle streaming', 'Streaming control', 'التحكم في البث')}</h2>
-            <p className="mb-4 text-sm text-[var(--text-muted)]">
-              {tx(language, 'Passez en direct en 1 clic: choisissez un match, activez le direct, puis ouvrez l’arène/overlay.', 'Go live in 1 click: select a match, activate live, then open arena/overlay.', 'ابدأ البث بنقرة واحدة: اختر مباراة، فعّل البث، ثم افتح واجهة الساحة/الطبقة.')}
-            </p>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <Field label={tx(language, 'Match à diffuser', 'Match to stream', 'المباراة للبث')}>
-                <select value={streamMatchId} onChange={(e) => setStreamMatchId(e.target.value)} className="admin-input">
-                  <option value="">{tx(language, 'Sélectionner un match...', 'Select a match...', 'اختر مباراة...')}</option>
-                  {matches.map((m) => {
-                    const p1Name = players.find((p) => p.id === m.player1_id)?.name || m.player1_id;
-                    const p2Name = players.find((p) => p.id === m.player2_id)?.name || m.player2_id;
-                    return <option key={m.id} value={m.id}>{`${m.id} - ${p1Name} vs ${p2Name}`}</option>;
-                  })}
-                </select>
-              </Field>
-
-              <Field label={tx(language, 'État du direct', 'Live status', 'حالة البث')}>
-                <div className="admin-input flex items-center justify-between">
-                  <span className="text-sm text-[var(--text-secondary)]">{streamLiveMatchId || tx(language, 'Aucun match live', 'No live match', 'لا توجد مباراة مباشرة')}</span>
-                  <span className={`rounded px-2 py-0.5 font-mono text-[10px] ${streamLiveMatchId ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}`}>
-                    {streamLiveMatchId ? 'LIVE' : 'OFF'}
-                  </span>
-                </div>
-              </Field>
-
-              <Field label={tx(language, 'Vision service', 'Vision service', 'خدمة الرؤية')}>
-                <div className="admin-input flex items-center justify-between">
-                  <span className="text-sm text-[var(--text-secondary)]">{visionState?.activeMatchId || tx(language, 'Non configuré', 'Not configured', 'غير مضبوط')}</span>
-                  <span className={`rounded px-2 py-0.5 font-mono text-[10px] ${visionState?.healthOk ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                    {visionState?.healthOk ? tx(language, 'EN LIGNE', 'ONLINE', 'متصل') : tx(language, 'HORS-LIGNE', 'OFFLINE', 'غير متصل')}
-                  </span>
-                </div>
-              </Field>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                onClick={() => controlStream('start_stream')}
-                disabled={loading || !streamMatchId}
-                className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-red)] px-5 py-2 font-mono text-sm font-bold text-black transition-all hover:brightness-110 disabled:opacity-40"
-              >
-                <Play size={14} /> {tx(language, 'Passer en direct', 'Go live', 'بدء البث المباشر')}
-              </button>
-
-              <button
-                onClick={() => controlStream('stop_stream')}
-                disabled={loading}
-                className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
-              >
-                <Square size={14} /> {tx(language, 'Arrêter le direct', 'Stop live', 'إيقاف البث المباشر')}
-              </button>
-
-              {streamMatchId && (
-                <Link
-                  href={`/stream?matchId=${streamMatchId}`}
-                  target="_blank"
-                  className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--accent-blue)] transition-colors hover:bg-[var(--bg-secondary)]"
-                >
-                  <LinkIcon size={14} /> {tx(language, 'Ouvrir l’arène', 'Open arena', 'فتح الساحة')}
-                </Link>
-              )}
-
-              {streamMatchId && (
-                <Link
-                  href={`/stream?overlay=true&matchId=${streamMatchId}`}
-                  target="_blank"
-                  className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--accent-blue)] transition-colors hover:bg-[var(--bg-secondary)]"
-                >
-                  <Radio size={14} /> {tx(language, 'Ouvrir l’overlay', 'Open overlay', 'فتح طبقة البث')}
-                </Link>
-              )}
-            </div>
-
-            {visionState?.lastError && (
-              <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-                {tx(language, 'Vision message:', 'Vision message:', 'رسالة الرؤية:')} {visionState.lastError}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
