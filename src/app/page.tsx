@@ -143,21 +143,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="arena-strip stagger" aria-label="Tournament quick metrics">
-        <article className="arena-strip-card">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{t.home.playersRegistered}</p>
-          <p className="mt-2 font-mono text-3xl font-semibold text-white">{totalPlayers}</p>
-        </article>
-        <article className="arena-strip-card">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{t.home.nextFixturesLoaded}</p>
-          <p className="mt-2 font-mono text-3xl font-semibold text-white">{upcomingMatches.length}</p>
-        </article>
-        <article className="arena-strip-card">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{t.home.matchesCompletedLabel}</p>
-          <p className="mt-2 font-mono text-3xl font-semibold text-white">{completedMatches.length}</p>
-        </article>
-      </section>
-
       <div className="arena-layout grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
         <section className="panel leaderboard-panel overflow-hidden">
           <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">

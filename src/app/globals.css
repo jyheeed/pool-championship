@@ -302,13 +302,15 @@ a { color: inherit; text-decoration: none; }
 
 .tunisia-flag-wrap {
   overflow: hidden;
+  width: 2.9rem;
+  height: 2.9rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 8px 18px rgba(0, 0, 0, 0.28);
 }
 
 .tunisia-flag {
-  border-radius: 999px;
   display: block;
-  height: 1.6rem;
-  width: 2.4rem;
+  height: 100%;
+  width: 100%;
 }
 
 .page-title {

@@ -42,12 +42,12 @@ export default function Navbar({ initialLanguage }: { initialLanguage: Language 
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <Link href="/" className="flex min-w-0 items-center gap-3">
           <div className="flag-pill tunisia-flag-wrap" aria-hidden="true">
-            <svg viewBox="0 0 60 40" className="tunisia-flag" role="img">
-              <rect width="60" height="40" fill="#E70013" />
-              <circle cx="30" cy="20" r="11.5" fill="#FFFFFF" />
-              <circle cx="27.8" cy="20" r="4.2" fill="#E70013" />
-              <circle cx="29.2" cy="20" r="3.4" fill="#FFFFFF" />
-              <path d="M34.4 20l1.87 5.77-4.91-3.57h6.08l-4.91 3.57z" fill="#E70013" transform="rotate(-18 34.4 20)" />
+            <svg viewBox="0 0 256 256" className="tunisia-flag" role="img" aria-hidden="true">
+              <circle cx="128" cy="128" r="128" fill="#e6002d" />
+              <circle cx="128" cy="128" r="61" fill="#ffffff" />
+              <circle cx="114" cy="128" r="48" fill="#e6002d" />
+              <circle cx="131" cy="128" r="34" fill="#ffffff" />
+              <polygon points="161,128 141.8,134.4 141.8,154.5 129.9,138.1 110.7,144.4 122.6,128 110.7,111.6 129.9,117.9 141.8,101.5 141.8,121.6" fill="#e6002d" />
             </svg>
           </div>
           <div className="min-w-0">
