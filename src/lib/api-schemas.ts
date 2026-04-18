@@ -45,6 +45,14 @@ export const clubRowSchema = z.object({
   logo_url: optionalText(500),
 });
 
+const fixtureEventSchema = z.object({
+  id: requiredText('Event ID', 80),
+  title: requiredText('Event title', 160),
+  date: requiredText('Event date', 80),
+  note: requiredText('Event note', 320),
+  venue: optionalText(160),
+});
+
 export const tournamentSettingsSchema = z.object({
   name: requiredText('Name', 160),
   season: requiredText('Season', 32),
@@ -53,6 +61,8 @@ export const tournamentSettingsSchema = z.object({
   logo: optionalText(500),
   heroTitle: optionalText(200),
   heroSubtitle: optionalText(280),
+  fixtureEvents: z.array(fixtureEventSchema).optional(),
+  venues: z.array(requiredText('Venue', 160)).optional(),
 });
 
 export const drawSchema = z.object({

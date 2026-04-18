@@ -72,6 +72,8 @@ interface SettingsForm {
   logo: string;
   heroTitle: string;
   heroSubtitle: string;
+  fixtureEventsText: string;
+  venuesText: string;
 }
 
 interface ClubForm {
@@ -120,7 +122,17 @@ type PublicClubData = {
 
 const emptyPlayer: PlayerForm = { id: '', name: '', nickname: '', nationality: '', age: '', club: '', photo_url: '', pool_group: '', is_seeded: 'false' };
 const emptyMatch: MatchForm = { id: '', round: '', date: '', time: '', venue: '', player1_id: '', player2_id: '', score1: '', score2: '', status: 'scheduled', frame_scores: '', notes: '', discipline: '' };
-const emptySettings: SettingsForm = { name: '', season: '2026', pointsWin: '3', pointsLoss: '0', logo: '', heroTitle: '', heroSubtitle: '' };
+const emptySettings: SettingsForm = {
+  name: '',
+  season: '2026',
+  pointsWin: '3',
+  pointsLoss: '0',
+  logo: '',
+  heroTitle: '',
+  heroSubtitle: '',
+  fixtureEventsText: '',
+  venuesText: '',
+};
 const emptyClub: ClubForm = { id: '', name: '', city: '', logo_url: '' };
 
 export default function AdminDashboard() {
@@ -213,6 +225,16 @@ export default function AdminDashboard() {
       }
 
       if (sData.data) {
+        const fixtureEventsText = Array.isArray(sData.data.fixtureEvents)
+          ? sData.data.fixtureEvents
+              .map((event: { id?: string; title?: string; date?: string; note?: string; venue?: string }) => `${event.id || ''} | ${event.title || ''} | ${event.date || ''} | ${event.note || ''} | ${event.venue || ''}`)
+              .join('\n')
+          : '';
+
+        const venuesText = Array.isArray(sData.data.venues)
+          ? sData.data.venues.join('\n')
+          : '';
+
         setSettingsForm({
           name: sData.data.name || '',
           season: sData.data.season || '2026',
@@ -221,6 +243,8 @@ export default function AdminDashboard() {
           logo: sData.data.logo || '',
           heroTitle: sData.data.heroTitle || '',
           heroSubtitle: sData.data.heroSubtitle || '',
+          fixtureEventsText,
+          venuesText,
         });
       }
 
@@ -308,6 +332,28 @@ export default function AdminDashboard() {
 
   async function saveSettings() {
     setLoading(true);
+
+    const fixtureEvents = settingsForm.fixtureEventsText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line, index) => {
+        const [rawId = '', rawTitle = '', rawDate = '', rawNote = '', rawVenue = ''] = line.split('|').map((part) => part.trim());
+        return {
+          id: rawId || `event-${index + 1}`,
+          title: rawTitle,
+          date: rawDate,
+          note: rawNote,
+          venue: rawVenue || undefined,
+        };
+      })
+      .filter((event) => event.title && event.date && event.note);
+
+    const venues = settingsForm.venuesText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
     const res = await fetch('/api/admin/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -319,6 +365,8 @@ export default function AdminDashboard() {
         logo: settingsForm.logo,
         heroTitle: settingsForm.heroTitle,
         heroSubtitle: settingsForm.heroSubtitle,
+        fixtureEvents,
+        venues,
       }),
     });
     const d = await res.json();
@@ -1065,6 +1113,29 @@ export default function AdminDashboard() {
               <Field label={tx(language, 'Titre hero', 'Hero title', 'عنوان الواجهة')}><input value={settingsForm.heroTitle} onChange={(e) => setSettingsForm((s) => ({ ...s, heroTitle: e.target.value }))} className="admin-input" /></Field>
               <Field label={tx(language, 'Sous-titre hero', 'Hero subtitle', 'العنوان الفرعي')}><input value={settingsForm.heroSubtitle} onChange={(e) => setSettingsForm((s) => ({ ...s, heroSubtitle: e.target.value }))} className="admin-input" /></Field>
             </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <Field label={tx(language, 'Événements Schedule (1 ligne = id | titre | date | note | venue)', 'Schedule events (1 line = id | title | date | note | venue)', 'فعاليات الجدول (سطر واحد = المعرف | العنوان | التاريخ | الوصف | المكان)')}>
+                <textarea
+                  value={settingsForm.fixtureEventsText}
+                  onChange={(e) => setSettingsForm((s) => ({ ...s, fixtureEventsText: e.target.value }))}
+                  className="admin-input min-h-[140px]"
+                  placeholder={tx(language, 'group-stage | Phases de poule | 1 Mai | Ouverture des poules | Salle 1', 'group-stage | Group stage | 1 May | Opening of pools | Table Hall 1', 'group-stage | مرحلة المجموعات | 1 مايو | افتتاح المجموعات | القاعة 1')}
+                />
+              </Field>
+              <Field label={tx(language, 'Venues du tournoi (1 ligne = 1 venue)', 'Tournament venues (1 line = 1 venue)', 'أماكن البطولة (سطر واحد = مكان واحد)')}>
+                <textarea
+                  value={settingsForm.venuesText}
+                  onChange={(e) => setSettingsForm((s) => ({ ...s, venuesText: e.target.value }))}
+                  className="admin-input min-h-[140px]"
+                  placeholder={tx(language, 'Salle 1\nSalle 2\nClub Central', 'Hall 1\nHall 2\nMain Club', 'القاعة 1\nالقاعة 2\nالنادي الرئيسي')}
+                />
+              </Field>
+            </div>
+
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
+              {tx(language, 'Supprimez simplement une ligne puis enregistrez pour retirer un événement ou une venue.', 'Delete a line and save to remove an event or venue.', 'احذف سطرًا ثم احفظ لإزالة فعالية أو مكان.')}
+            </p>
             <div className="mt-4 flex gap-2">
               <button onClick={saveSettings} disabled={loading || !settingsForm.name || !settingsForm.season} className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-red)] px-5 py-2 font-mono text-sm font-bold text-black transition-all hover:brightness-110 disabled:opacity-40">
                 <Save size={14} /> {tx(language, 'Enregistrer', 'Save settings', 'حفظ الإعدادات')}

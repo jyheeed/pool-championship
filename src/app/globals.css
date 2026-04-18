@@ -289,15 +289,26 @@ a { color: inherit; text-decoration: none; }
 
 .flag-pill {
   align-items: center;
-  background: linear-gradient(135deg, rgba(223, 31, 45, 0.9), rgba(140, 7, 16, 0.95));
-  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255,255,255,0.14);
   border-radius: 999px;
-  box-shadow: 0 10px 30px rgba(223, 31, 45, 0.28);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
   display: inline-flex;
   gap: 0.4rem;
-  min-width: 72px;
+  min-width: 76px;
   justify-content: center;
-  padding: 0.5rem 0.75rem;
+  padding: 0.28rem 0.45rem;
+}
+
+.tunisia-flag-wrap {
+  overflow: hidden;
+}
+
+.tunisia-flag {
+  border-radius: 999px;
+  display: block;
+  height: 1.6rem;
+  width: 2.4rem;
 }
 
 .page-title {
@@ -389,4 +400,136 @@ a { color: inherit; text-decoration: none; }
 
 .admin-input:focus {
   border-color: var(--accent-red);
+}
+
+.pool-hero-home {
+  isolation: isolate;
+}
+
+.pool-hero-home::after {
+  opacity: 0.3;
+}
+
+.pool-hero-home::before {
+  opacity: 0.24;
+}
+
+.stat-card-tilt {
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.stat-card-tilt:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 194, 71, 0.24);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+.hero-pro-note-home {
+  background:
+    linear-gradient(120deg, rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0.1) 42%, rgba(255, 194, 71, 0.06));
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.snapshot-panel {
+  background:
+    radial-gradient(circle at 85% 0%, rgba(48, 183, 255, 0.18), transparent 40%),
+    linear-gradient(180deg, rgba(12, 34, 31, 0.9), rgba(8, 23, 22, 0.96));
+}
+
+.arena-strip {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.arena-strip-card {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  background:
+    linear-gradient(130deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+    radial-gradient(circle at 100% 0%, rgba(43, 220, 152, 0.14), transparent 42%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  padding: 0.95rem 1rem;
+}
+
+.arena-layout {
+  position: relative;
+}
+
+.leaderboard-panel {
+  background:
+    linear-gradient(180deg, rgba(12, 26, 24, 0.97), rgba(7, 19, 17, 0.96));
+}
+
+.mini-panel {
+  background:
+    linear-gradient(180deg, rgba(11, 24, 23, 0.96), rgba(8, 18, 17, 0.94));
+}
+
+@media (min-width: 640px) {
+  .arena-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .arena-strip-card {
+    padding: 1rem 1.15rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .pool-hero {
+    padding: 1.4rem;
+    border-radius: 24px;
+  }
+}
+
+.fixtures-shell {
+  position: relative;
+}
+
+.fixtures-hero {
+  background:
+    radial-gradient(circle at 88% 0%, rgba(48, 183, 255, 0.17), transparent 36%),
+    linear-gradient(180deg, rgba(10, 28, 27, 0.96), rgba(7, 20, 20, 0.94));
+}
+
+.fixtures-status-strip {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fixtures-status-card {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: linear-gradient(130deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
+  padding: 0.75rem 0.9rem;
+}
+
+.fixtures-event-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(244, 207, 121, 0.15), transparent 35%),
+    linear-gradient(180deg, rgba(12, 26, 24, 0.95), rgba(8, 19, 18, 0.93));
+}
+
+.fixtures-round-title {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.45rem;
+}
+
+.fixtures-match-card {
+  background:
+    linear-gradient(180deg, rgba(12, 24, 23, 0.97), rgba(7, 18, 17, 0.95));
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.fixtures-match-card:hover {
+  border-color: rgba(48, 183, 255, 0.26);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 640px) {
+  .fixtures-status-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

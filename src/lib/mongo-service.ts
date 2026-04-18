@@ -7,6 +7,7 @@ import SettingsModel from '@/models/Settings';
 import { sendRegistrationApprovalEmail } from '@/lib/mailer';
 import type {
   Club,
+  FixtureEvent,
   ClubRow,
   HeadToHead,
   Match,
@@ -376,6 +377,42 @@ export async function getSettings(): Promise<TournamentSettings> {
     map[s.key] = s.value;
   });
 
+  let fixtureEvents: FixtureEvent[] = [];
+  let venues: string[] = [];
+
+  if (map.fixture_events) {
+    try {
+      const parsed = JSON.parse(map.fixture_events) as unknown;
+      if (Array.isArray(parsed)) {
+        fixtureEvents = parsed.reduce<FixtureEvent[]>((acc, item) => {
+          if (!item || typeof item !== 'object') return acc;
+          const obj = item as Record<string, unknown>;
+          const id = String(obj.id || '').trim();
+          const title = String(obj.title || '').trim();
+          const date = String(obj.date || '').trim();
+          const note = String(obj.note || '').trim();
+          const venue = String(obj.venue || '').trim();
+          if (!id || !title || !date || !note) return acc;
+          acc.push({ id, title, date, note, venue: venue || undefined });
+          return acc;
+        }, []);
+      }
+    } catch {
+      fixtureEvents = [];
+    }
+  }
+
+  if (map.tournament_venues) {
+    try {
+      const parsed = JSON.parse(map.tournament_venues) as unknown;
+      if (Array.isArray(parsed)) {
+        venues = parsed.map((item) => String(item || '').trim()).filter(Boolean);
+      }
+    } catch {
+      venues = [];
+    }
+  }
+
   return {
     name: map.tournament_name || process.env.NEXT_PUBLIC_TOURNAMENT_NAME || 'Pool Championship',
     season: map.season || '2026',
@@ -384,6 +421,8 @@ export async function getSettings(): Promise<TournamentSettings> {
     logo: map.logo || undefined,
     heroTitle: map.hero_title || undefined,
     heroSubtitle: map.hero_subtitle || undefined,
+    fixtureEvents,
+    venues,
   };
 }
 
@@ -397,6 +436,8 @@ export async function updateSettings(settings: TournamentSettings): Promise<void
     { key: 'logo', value: settings.logo || '' },
     { key: 'hero_title', value: settings.heroTitle || '' },
     { key: 'hero_subtitle', value: settings.heroSubtitle || '' },
+    { key: 'fixture_events', value: JSON.stringify(settings.fixtureEvents || []) },
+    { key: 'tournament_venues', value: JSON.stringify(settings.venues || []) },
   ];
 
   for (const item of updates) {

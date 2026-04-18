@@ -62,6 +62,16 @@ export interface TournamentSettings {
   logo?: string;
   heroTitle?: string;
   heroSubtitle?: string;
+  fixtureEvents?: FixtureEvent[];
+  venues?: string[];
+}
+
+export interface FixtureEvent {
+  id: string;
+  title: string;
+  date: string;
+  note: string;
+  venue?: string;
 }
 
 export interface Club {

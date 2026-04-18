@@ -10,13 +10,13 @@ const TEXT = {
   fr: {
     successTitle: 'Inscription envoyée',
     successBody:
-      'La demande est en attente de validation. Dès que l&apos;admin l&apos;approuve, un email de confirmation sera envoyé.',
-    backHome: 'Retour à l&apos;accueil',
+      'La demande est en attente de validation. Dès que l\'admin l\'approuve, un email de confirmation sera envoyé.',
+    backHome: 'Retour à l\'accueil',
     newRegistration: 'Nouvelle inscription',
     title: 'Inscription joueur',
     subtitle: 'Demande de participation au championnat',
     notice:
-      'Les joueurs de 18 ans et plus doivent renseigner leur CIN. Les demandes sont validées manuellement par l&apos;administrateur.',
+      'Les joueurs de 18 ans et plus doivent renseigner leur CIN. Les demandes sont validées manuellement par l\'administrateur.',
     labels: {
       fullName: 'NOM COMPLET *',
       nickname: 'SURNOM (OPTIONNEL)',

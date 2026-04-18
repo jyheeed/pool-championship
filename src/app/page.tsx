@@ -68,9 +68,9 @@ export default async function HomePage() {
   const completionRate = getCompletionRate(totalMatches, completedMatches.length);
 
   return (
-    <div className="space-y-8 animate-in">
-      <section className="pool-hero">
-        <div className="relative z-10 grid gap-8 lg:grid-cols-[1.4fr_0.95fr]">
+    <div className="space-y-8 animate-in lg:space-y-10">
+      <section className="pool-hero pool-hero-home">
+        <div className="relative z-10 grid gap-8 lg:grid-cols-[1.25fr_1fr]">
           <div className="space-y-5">
             <p className="section-kicker">
               {t.home.seasonKicker(settings.season, language === 'ar' ? 'تونس' : language === 'fr' ? 'Tunisie' : 'Tunisia')}
@@ -83,19 +83,19 @@ export default async function HomePage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="stat-card">
+              <div className="stat-card stat-card-tilt">
                 <p className="text-[11px] uppercase tracking-[0.25em] text-white/45">{t.home.leader}</p>
                 <p className="mt-2 text-2xl font-semibold text-white">{topPlayer?.name}</p>
                 <p className="mt-1 text-sm text-white/60">{topPlayer?.points ?? 0} {t.home.tableHeadings.points} · {topPlayer?.wins ?? 0} {language === 'fr' ? 'victoires' : language === 'ar' ? 'انتصارات' : 'wins'}</p>
               </div>
-              <div className="stat-card">
+              <div className="stat-card stat-card-tilt">
                 <p className="text-[11px] uppercase tracking-[0.25em] text-white/45">{t.home.competition}</p>
                 <p className="mt-2 text-2xl font-semibold text-white">{t.home.playersCount(totalPlayers)}</p>
                 <p className="mt-1 text-sm text-white/60">
                   W {settings.pointsWin} · L {settings.pointsLoss}
                 </p>
               </div>
-              <div className="stat-card">
+              <div className="stat-card stat-card-tilt">
                 <p className="text-[11px] uppercase tracking-[0.25em] text-white/45">{t.home.progress}</p>
                 <p className="mt-2 text-2xl font-semibold text-white">{completionRate}%</p>
                 <p className="mt-1 text-sm text-white/60">{t.home.matchesCompleted(completedMatches.length, totalMatches)}</p>
@@ -112,19 +112,14 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div className="hero-pro-note">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-white/45">{t.home.professionalDirection}</p>
-              <p className="mt-2 text-sm text-white/70">{t.home.professionalText}</p>
-            </div>
           </div>
 
-          <div className="panel-soft p-5">
+          <div className="panel-soft snapshot-panel p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="section-kicker text-[var(--accent-blue)]">{t.home.tournamentPulse}</p>
                 <h2 className="mt-2 text-2xl font-semibold text-white">{t.home.quickSnapshot}</h2>
               </div>
-              <span className="status-pill status-live">{t.home.liveReady}</span>
             </div>
 
             <div className="mt-5 space-y-3">
@@ -148,8 +143,23 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
-        <section className="panel overflow-hidden">
+      <section className="arena-strip stagger" aria-label="Tournament quick metrics">
+        <article className="arena-strip-card">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{t.home.playersRegistered}</p>
+          <p className="mt-2 font-mono text-3xl font-semibold text-white">{totalPlayers}</p>
+        </article>
+        <article className="arena-strip-card">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{t.home.nextFixturesLoaded}</p>
+          <p className="mt-2 font-mono text-3xl font-semibold text-white">{upcomingMatches.length}</p>
+        </article>
+        <article className="arena-strip-card">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{t.home.matchesCompletedLabel}</p>
+          <p className="mt-2 font-mono text-3xl font-semibold text-white">{completedMatches.length}</p>
+        </article>
+      </section>
+
+      <div className="arena-layout grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
+        <section className="panel leaderboard-panel overflow-hidden">
           <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
             <div>
               <p className="section-kicker">{t.home.leaderboard}</p>
@@ -211,7 +221,7 @@ export default async function HomePage() {
         </section>
 
         <div className="space-y-6">
-          <section className="panel p-5">
+          <section className="panel mini-panel p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="section-kicker text-[var(--accent-blue)]">{t.home.upcoming}</p>
@@ -248,7 +258,7 @@ export default async function HomePage() {
             </div>
           </section>
 
-          <section className="panel p-5">
+          <section className="panel mini-panel p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="section-kicker text-[var(--accent-green)]">{t.home.completed}</p>

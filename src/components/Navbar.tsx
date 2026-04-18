@@ -41,13 +41,13 @@ export default function Navbar({ initialLanguage }: { initialLanguage: Language 
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[rgba(5,12,11,0.76)] backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <Link href="/" className="flex min-w-0 items-center gap-3">
-          <div className="flag-pill">
-            <svg viewBox="0 0 64 64" aria-hidden="true" className="h-6 w-6 rounded-full">
-              <circle cx="32" cy="32" r="32" fill="#d92027" />
-              <circle cx="32" cy="32" r="17" fill="#ffffff" />
-              <circle cx="31" cy="32" r="7.5" fill="#d92027" />
-              <circle cx="33" cy="32" r="6" fill="#ffffff" />
-              <path d="M42 32l-4 1.3 2.5 3.4-4.1-1.1-1.8 3.9-1.9-3.9-4.1 1.1 2.6-3.4-4.1-1.3 4.1-1.2-2.6-3.4 4.1 1.1 1.9-3.9 1.8 3.9 4.1-1.1-2.5 3.4z" fill="#d92027" />
+          <div className="flag-pill tunisia-flag-wrap" aria-hidden="true">
+            <svg viewBox="0 0 60 40" className="tunisia-flag" role="img">
+              <rect width="60" height="40" fill="#E70013" />
+              <circle cx="30" cy="20" r="11.5" fill="#FFFFFF" />
+              <circle cx="27.8" cy="20" r="4.2" fill="#E70013" />
+              <circle cx="29.2" cy="20" r="3.4" fill="#FFFFFF" />
+              <path d="M34.4 20l1.87 5.77-4.91-3.57h6.08l-4.91 3.57z" fill="#E70013" transform="rotate(-18 34.4 20)" />
             </svg>
           </div>
           <div className="min-w-0">

@@ -28,7 +28,7 @@ const translations = {
       arenaHud: 'HUD arène',
     },
     footer: {
-      rights: '© 2024 Tunisian Pool Championship. Tous droits réservés.',
+      rights: '© 2026 Tunisian Pool Championship. Tous droits réservés.',
       tagline: 'Classements, programme, résultats et direct réunis dans un espace premium.',
     },
     home: {
@@ -86,11 +86,11 @@ const translations = {
       seasonKicker: (season: string) => `${season} structure du tournoi`,
       title: 'Tirage & Poules',
       subtitle:
-        'Explorez le tirage officiel du Tunisian Pool Championship 2026, avec l&apos;allocation des groupes, les têtes de série et la structure du tournoi dès le début de la compétition.',
+        'Explorez le tirage officiel du Championnat tunisien de billard 2026, avec la répartition des groupes, les têtes de série et la structure du tournoi dès le début de la compétition.',
       officialParagraph:
         'Les joueurs sont répartis dans leurs poules selon leur classement. Les têtes de série sont placées en premier, puis les autres joueurs sont distribués aléatoirement pour garantir des groupes équilibrés dès le coup d\'envoi.',
       readOnly: 'Lecture seule',
-      adminManaged: 'Géré par l&apos;admin',
+      adminManaged: 'Géré par l\'admin',
       balancedPools: 'Poules équilibrées',
       pools: 'Poules',
       players: 'Joueurs',
@@ -107,7 +107,7 @@ const translations = {
       balancedAllocationText:
         'Les joueurs restants sont répartis aléatoirement en gardant des groupes aussi équilibrés que possible.',
       readOnlyText:
-        'Les utilisateurs peuvent seulement consulter le tirage. Seul l&apos;admin peut définir les têtes de série et lancer le tirage depuis le tableau de bord.',
+        'Les utilisateurs peuvent seulement consulter le tirage. Seul l\'admin peut définir les têtes de série et lancer le tirage depuis le tableau de bord.',
       noGroupsAssigned: 'Aucune poule attribuée pour le moment.',
       pool: 'Poule',
       playersInGroup: (count: number) => `${count} joueurs`,
@@ -189,7 +189,7 @@ const translations = {
       arenaHud: 'Arena HUD',
     },
     footer: {
-      rights: '© 2024 Tunisian Pool Championship. All rights reserved.',
+      rights: '© 2026 Tunisian Pool Championship. All rights reserved.',
       tagline: 'Standings, schedule, results and live control in one premium tournament space.',
     },
     home: {
@@ -350,7 +350,7 @@ const translations = {
       arenaHud: 'واجهة الساحة',
     },
     footer: {
-      rights: '© 2024 بطولة تونس للبلياردو. جميع الحقوق محفوظة.',
+      rights: '© 2026 بطولة تونس للبلياردو. جميع الحقوق محفوظة.',
       tagline: 'الترتيب والبرنامج والنتائج والتحكم المباشر في مساحة احترافية واحدة.',
     },
     home: {
