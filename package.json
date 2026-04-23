@@ -9,6 +9,8 @@
     "lint": "next lint",
     "seed:players": "node scripts/seed_players_mongo.js",
     "seed:players:file": "node scripts/seed_players_mongo.js",
+    "seed:tournament:reset": "node scripts/reset_tournament_local.js",
+    "db:clone": "node scripts/clone_mongo_db.js",
     "stack:up": "docker compose up -d --build",
     "stack:down": "docker compose down"
   },

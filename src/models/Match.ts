@@ -6,6 +6,11 @@ export interface IMatch extends Document {
   date: string;
   time?: string;
   venue?: string;
+  phase?: 'group' | 'knockout';
+  groupName?: string;
+  roundNumber?: number;
+  scheduledAt?: Date;
+  tableNumber?: number;
   player1Id: string;
   player2Id: string;
   score1: number | null;
@@ -22,6 +27,15 @@ const MatchSchema: Schema = new Schema({
   date: { type: String, required: true },
   time: { type: String },
   venue: { type: String },
+  phase: {
+    type: String,
+    enum: ['group', 'knockout'],
+    default: 'group',
+  },
+  groupName: { type: String },
+  roundNumber: { type: Number },
+  scheduledAt: { type: Date },
+  tableNumber: { type: Number },
   player1Id: { type: String, required: true },
   player2Id: { type: String, required: true },
   score1: { type: Number, default: null },

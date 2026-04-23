@@ -26,6 +26,11 @@ export interface Match {
   date: string;
   time?: string;
   venue?: string;
+  phase?: 'group' | 'knockout';
+  groupName?: string;
+  roundNumber?: number;
+  scheduledAt?: string;
+  tableNumber?: number;
   player1Id: string;
   player2Id: string;
   player1Name?: string;
@@ -143,6 +148,11 @@ export interface MatchRow {
   date: string;
   time: string;
   venue: string;
+  phase: string;
+  group_name: string;
+  round_number: string;
+  scheduled_at: string;
+  table_number: string;
   player1_id: string;
   player2_id: string;
   score1: string;

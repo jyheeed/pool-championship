@@ -44,6 +44,11 @@ type DbMatch = {
   date: string;
   time?: string;
   venue?: string;
+  phase?: Match['phase'];
+  groupName?: string;
+  roundNumber?: number;
+  scheduledAt?: Date;
+  tableNumber?: number;
   player1Id: string;
   player2Id: string;
   score1: number | null;
@@ -82,6 +87,25 @@ type DbSetting = {
   key: string;
   value: string;
 };
+
+function normalizePoolGroupName(poolGroup?: string): string {
+  return (poolGroup || '').trim();
+}
+
+async function clearOtherSeededPlayersInGroup(groupName: string, currentPlayerId?: string): Promise<void> {
+  if (!groupName) return;
+
+  const filter: Record<string, unknown> = {
+    poolGroup: groupName,
+    isSeeded: true,
+  };
+
+  if (currentPlayerId) {
+    filter.id = { $ne: currentPlayerId };
+  }
+
+  await PlayerModel.updateMany(filter, { $set: { isSeeded: false } });
+}
 
 // ── Players ──
 
@@ -141,6 +165,13 @@ export async function addPlayer(player: PlayerRow): Promise<void> {
   await dbConnect();
   assert(player.id?.trim(), 'Player ID is required');
   assert(player.name?.trim(), 'Player name is required');
+
+  const poolGroup = normalizePoolGroupName(player.pool_group);
+  const isSeeded = player.is_seeded === 'true';
+
+  if (isSeeded && poolGroup) {
+    await clearOtherSeededPlayersInGroup(poolGroup);
+  }
   
   await PlayerModel.create({
     id: player.id,
@@ -150,14 +181,22 @@ export async function addPlayer(player: PlayerRow): Promise<void> {
     age: player.age ? parseInt(player.age, 10) : undefined,
     club: player.club,
     photoUrl: player.photo_url,
-    poolGroup: player.pool_group,
-    isSeeded: player.is_seeded === 'true',
+    poolGroup,
+    isSeeded,
   });
 }
 
 export async function updatePlayer(id: string, player: PlayerRow): Promise<void> {
   await dbConnect();
   assert(player.name?.trim(), 'Player name is required');
+
+  const poolGroup = normalizePoolGroupName(player.pool_group);
+  const isSeeded = player.is_seeded === 'true';
+
+  if (isSeeded && poolGroup) {
+    await clearOtherSeededPlayersInGroup(poolGroup, id);
+  }
+
   await PlayerModel.findOneAndUpdate({ id }, {
     name: player.name,
     nickname: player.nickname,
@@ -165,8 +204,8 @@ export async function updatePlayer(id: string, player: PlayerRow): Promise<void>
     age: player.age ? parseInt(player.age, 10) : undefined,
     club: player.club,
     photoUrl: player.photo_url,
-    poolGroup: player.pool_group,
-    isSeeded: player.is_seeded === 'true',
+    poolGroup,
+    isSeeded,
   });
 }
 
@@ -192,6 +231,11 @@ export async function getMatches(): Promise<Match[]> {
     date: mr.date,
     time: mr.time || undefined,
     venue: mr.venue || undefined,
+    phase: mr.phase || undefined,
+    groupName: mr.groupName || undefined,
+    roundNumber: mr.roundNumber || undefined,
+    scheduledAt: mr.scheduledAt ? mr.scheduledAt.toISOString() : undefined,
+    tableNumber: mr.tableNumber || undefined,
     player1Id: mr.player1Id,
     player2Id: mr.player2Id,
     player1Name: nameMap[mr.player1Id] || mr.player1Id,
@@ -217,6 +261,11 @@ export async function addMatch(match: MatchRow): Promise<void> {
     date: match.date,
     time: match.time,
     venue: match.venue,
+    phase: match.phase,
+    groupName: match.group_name,
+    roundNumber: match.round_number ? parseInt(match.round_number, 10) : undefined,
+    scheduledAt: match.scheduled_at ? new Date(match.scheduled_at) : undefined,
+    tableNumber: match.table_number ? parseInt(match.table_number, 10) : undefined,
     player1Id: match.player1_id,
     player2Id: match.player2_id,
     score1: match.score1 ? parseInt(match.score1, 10) : null,
@@ -235,6 +284,11 @@ export async function updateMatch(id: string, match: MatchRow): Promise<void> {
     date: match.date,
     time: match.time,
     venue: match.venue,
+    phase: match.phase,
+    groupName: match.group_name,
+    roundNumber: match.round_number ? parseInt(match.round_number, 10) : undefined,
+    scheduledAt: match.scheduled_at ? new Date(match.scheduled_at) : undefined,
+    tableNumber: match.table_number ? parseInt(match.table_number, 10) : undefined,
     player1Id: match.player1_id,
     player2Id: match.player2_id,
     score1: match.score1 ? parseInt(match.score1, 10) : null,

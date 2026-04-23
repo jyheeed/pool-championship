@@ -72,8 +72,21 @@ interface SettingsForm {
   logo: string;
   heroTitle: string;
   heroSubtitle: string;
-  fixtureEventsText: string;
   venuesText: string;
+}
+
+interface FixtureEventForm {
+  id: string;
+  title: string;
+  date: string;
+  note: string;
+  venue: string;
+}
+
+interface MatchScheduleEdit {
+  date: string;
+  time: string;
+  venue: string;
 }
 
 interface ClubForm {
@@ -130,7 +143,6 @@ const emptySettings: SettingsForm = {
   logo: '',
   heroTitle: '',
   heroSubtitle: '',
-  fixtureEventsText: '',
   venuesText: '',
 };
 const emptyClub: ClubForm = { id: '', name: '', city: '', logo_url: '' };
@@ -147,6 +159,8 @@ export default function AdminDashboard() {
   const [matchForm, setMatchForm] = useState<MatchForm>(emptyMatch);
   const [clubForm, setClubForm] = useState<ClubForm>(emptyClub);
   const [settingsForm, setSettingsForm] = useState<SettingsForm>(emptySettings);
+  const [fixtureEvents, setFixtureEvents] = useState<FixtureEventForm[]>([]);
+  const [matchScheduleEdits, setMatchScheduleEdits] = useState<Record<string, MatchScheduleEdit>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -207,6 +221,15 @@ export default function AdminDashboard() {
           }));
 
         setMatches(nextMatches);
+        const nextScheduleEdits = nextMatches.reduce<Record<string, MatchScheduleEdit>>((acc, match) => {
+          acc[match.id] = {
+            date: match.date,
+            time: match.time,
+            venue: match.venue,
+          };
+          return acc;
+        }, {});
+        setMatchScheduleEdits(nextScheduleEdits);
       }
 
       if (cData.data) {
@@ -225,11 +248,16 @@ export default function AdminDashboard() {
       }
 
       if (sData.data) {
-        const fixtureEventsText = Array.isArray(sData.data.fixtureEvents)
-          ? sData.data.fixtureEvents
-              .map((event: { id?: string; title?: string; date?: string; note?: string; venue?: string }) => `${event.id || ''} | ${event.title || ''} | ${event.date || ''} | ${event.note || ''} | ${event.venue || ''}`)
-              .join('\n')
-          : '';
+        const nextFixtureEvents = Array.isArray(sData.data.fixtureEvents)
+          ? sData.data.fixtureEvents.map((event: { id?: string; title?: string; date?: string; note?: string; venue?: string }, index: number) => ({
+              id: event.id || `event-${index + 1}`,
+              title: event.title || '',
+              date: event.date || '',
+              note: event.note || '',
+              venue: event.venue || '',
+            }))
+          : [];
+        setFixtureEvents(nextFixtureEvents);
 
         const venuesText = Array.isArray(sData.data.venues)
           ? sData.data.venues.join('\n')
@@ -243,7 +271,6 @@ export default function AdminDashboard() {
           logo: sData.data.logo || '',
           heroTitle: sData.data.heroTitle || '',
           heroSubtitle: sData.data.heroSubtitle || '',
-          fixtureEventsText,
           venuesText,
         });
       }
@@ -331,23 +358,29 @@ export default function AdminDashboard() {
   }
 
   async function saveSettings() {
+    if (hasInvalidFixtureEvents) {
+      flash(
+        tx(
+          language,
+          'Complétez les événements en rouge (titre, date, note) avant d’enregistrer.',
+          'Complete highlighted events (title, date, note) before saving.',
+          'أكمل الفعاليات المظللة بالأحمر (العنوان، التاريخ، الملاحظة) قبل الحفظ.'
+        )
+      );
+      return;
+    }
+
     setLoading(true);
 
-    const fixtureEvents = settingsForm.fixtureEventsText
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line, index) => {
-        const [rawId = '', rawTitle = '', rawDate = '', rawNote = '', rawVenue = ''] = line.split('|').map((part) => part.trim());
-        return {
-          id: rawId || `event-${index + 1}`,
-          title: rawTitle,
-          date: rawDate,
-          note: rawNote,
-          venue: rawVenue || undefined,
-        };
-      })
-      .filter((event) => event.title && event.date && event.note);
+    const sanitizedFixtureEvents = fixtureEvents
+      .map((event, index) => ({
+        id: (event.id || `event-${index + 1}`).trim(),
+        title: event.title.trim(),
+        date: event.date.trim(),
+        note: event.note.trim(),
+        venue: event.venue.trim() || undefined,
+      }))
+      .filter((event) => event.id && event.title && event.date && event.note);
 
     const venues = settingsForm.venuesText
       .split('\n')
@@ -365,13 +398,60 @@ export default function AdminDashboard() {
         logo: settingsForm.logo,
         heroTitle: settingsForm.heroTitle,
         heroSubtitle: settingsForm.heroSubtitle,
-        fixtureEvents,
+        fixtureEvents: sanitizedFixtureEvents,
         venues,
       }),
     });
     const d = await res.json();
     flash(d.success ? tx(language, 'Paramètres mis à jour', 'Settings updated', 'تم تحديث الإعدادات') : d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
     if (d.success) await load();
+    setLoading(false);
+  }
+
+  function addFixtureEvent() {
+    setFixtureEvents((prev) => ([
+      ...prev,
+      {
+        id: `event-${prev.length + 1}`,
+        title: '',
+        date: '',
+        note: '',
+        venue: '',
+      },
+    ]));
+  }
+
+  function updateFixtureEvent(index: number, patch: Partial<FixtureEventForm>) {
+    setFixtureEvents((prev) => prev.map((event, i) => (i === index ? { ...event, ...patch } : event)));
+  }
+
+  function removeFixtureEvent(index: number) {
+    setFixtureEvents((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function saveMatchScheduleInline(matchId: string) {
+    const match = matches.find((item) => item.id === matchId);
+    const patch = matchScheduleEdits[matchId];
+    if (!match || !patch) return;
+
+    const payload = {
+      ...match,
+      date: patch.date,
+      time: patch.time,
+      venue: patch.venue,
+    };
+
+    setLoading(true);
+    const res = await fetch('/api/admin/matches', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await res.json();
+    flash(d.success ? tx(language, 'Match mis à jour', 'Match updated', 'تم تحديث المباراة') : d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+    if (d.success) {
+      await load();
+    }
     setLoading(false);
   }
 
@@ -668,6 +748,40 @@ export default function AdminDashboard() {
     if (!q) return clubs;
     return clubs.filter((c) => [c.id, c.name, c.city].some((value) => value.toLowerCase().includes(q)));
   }, [clubs, clubQuery]);
+
+  const venueOptions = useMemo(
+    () => Array.from(new Set(settingsForm.venuesText.split('\n').map((line) => line.trim()).filter(Boolean))),
+    [settingsForm.venuesText]
+  );
+
+  const fixtureEventValidation = useMemo(
+    () =>
+      fixtureEvents.map((event) => {
+        const normalized = {
+          id: event.id.trim(),
+          title: event.title.trim(),
+          date: event.date.trim(),
+          note: event.note.trim(),
+          venue: event.venue.trim(),
+        };
+        const hasAnyValue = Object.values(normalized).some(Boolean);
+        const missingRequired: string[] = [];
+        if (hasAnyValue && !normalized.title) missingRequired.push(tx(language, 'titre', 'title', 'العنوان'));
+        if (hasAnyValue && !normalized.date) missingRequired.push(tx(language, 'date', 'date', 'التاريخ'));
+        if (hasAnyValue && !normalized.note) missingRequired.push(tx(language, 'note', 'note', 'الملاحظة'));
+        return {
+          hasAnyValue,
+          missingRequired,
+          isIncomplete: hasAnyValue && missingRequired.length > 0,
+        };
+      }),
+    [fixtureEvents, language]
+  );
+
+  const hasInvalidFixtureEvents = useMemo(
+    () => fixtureEventValidation.some((event) => event.isIncomplete),
+    [fixtureEventValidation]
+  );
 
   const pendingRegistrations = useMemo(() => registrations.filter((r) => r.status === 'pending'), [registrations]);
 
@@ -1013,7 +1127,13 @@ export default function AdminDashboard() {
               <Field label={tx(language, 'Score 2', 'Score 2', 'النتيجة 2')}><input type="number" value={matchForm.score2} onChange={(e) => setMatchForm((m) => ({ ...m, score2: e.target.value }))} className="admin-input" /></Field>
               <Field label={tx(language, 'Statut', 'Status', 'الحالة')}><select value={matchForm.status} onChange={(e) => setMatchForm((m) => ({ ...m, status: e.target.value }))} className="admin-input"><option value="scheduled">{tx(language, 'Programmé', 'Scheduled', 'مجدولة')}</option><option value="live">{tx(language, 'Direct', 'Live', 'مباشر')}</option><option value="completed">{tx(language, 'Terminé', 'Completed', 'منتهية')}</option><option value="postponed">{tx(language, 'Reporté', 'Postponed', 'مؤجلة')}</option></select></Field>
               <Field label={tx(language, 'Discipline', 'Discipline', 'التخصص')}><select value={matchForm.discipline} onChange={(e) => setMatchForm((m) => ({ ...m, discipline: e.target.value }))} className="admin-input"><option value="">{tx(language, 'Sélection libre...', 'Any select...', 'اختيار مفتوح...')}</option><option value="8-ball">8-ball</option><option value="9-ball">9-ball</option><option value="10-ball">10-ball</option></select></Field>
-              <Field label={tx(language, 'Lieu', 'Venue', 'المكان')}><input value={matchForm.venue} onChange={(e) => setMatchForm((m) => ({ ...m, venue: e.target.value }))} className="admin-input" /></Field>
+              <Field label={tx(language, 'Lieu', 'Venue', 'المكان')}>
+                <select value={matchForm.venue} onChange={(e) => setMatchForm((m) => ({ ...m, venue: e.target.value }))} className="admin-input">
+                  <option value="">{tx(language, 'Sélectionner une salle...', 'Select venue...', 'اختر المكان...')}</option>
+                  {matchForm.venue && !venueOptions.includes(matchForm.venue) && <option value={matchForm.venue}>{matchForm.venue}</option>}
+                  {venueOptions.map((venue) => <option key={venue} value={venue}>{venue}</option>)}
+                </select>
+              </Field>
               <Field label={tx(language, 'Notes', 'Notes', 'ملاحظات')}><input value={matchForm.notes} onChange={(e) => setMatchForm((m) => ({ ...m, notes: e.target.value }))} className="admin-input" /></Field>
             </div>
             <div className="mt-4 flex gap-2">
@@ -1055,11 +1175,12 @@ export default function AdminDashboard() {
                       className="cursor-pointer"
                     />
                   </th>
-                  <th>ID</th><th>{tx(language, 'Tour', 'Round', 'الدور')}</th><th>{tx(language, 'Date', 'Date', 'التاريخ')}</th><th>{tx(language, 'Joueur 1', 'Player 1', 'اللاعب 1')}</th><th>{tx(language, 'Score', 'Score', 'النتيجة')}</th><th>{tx(language, 'Joueur 2', 'Player 2', 'اللاعب 2')}</th><th>{tx(language, 'Statut', 'Status', 'الحالة')}</th><th></th></tr></thead>
+                  <th>ID</th><th>{tx(language, 'Tour', 'Round', 'الدور')}</th><th>{tx(language, 'Date', 'Date', 'التاريخ')}</th><th>{tx(language, 'Heure', 'Time', 'الوقت')}</th><th>{tx(language, 'Salle', 'Venue', 'المكان')}</th><th>{tx(language, 'Joueur 1', 'Player 1', 'اللاعب 1')}</th><th>{tx(language, 'Score', 'Score', 'النتيجة')}</th><th>{tx(language, 'Joueur 2', 'Player 2', 'اللاعب 2')}</th><th>{tx(language, 'Statut', 'Status', 'الحالة')}</th><th></th></tr></thead>
                 <tbody>
                   {filteredMatches.map((m) => {
                     const p1Name = players.find((p) => p.id === m.player1_id)?.name || m.player1_id;
                     const p2Name = players.find((p) => p.id === m.player2_id)?.name || m.player2_id;
+                    const inline = matchScheduleEdits[m.id] || { date: m.date, time: m.time, venue: m.venue };
                     return (
                       <tr key={m.id}>
                         <td style={{width: '32px'}}>
@@ -1072,13 +1193,49 @@ export default function AdminDashboard() {
                         </td>
                         <td className="font-mono text-xs">{m.id}</td>
                         <td className="text-sm">{m.round}</td>
-                        <td className="font-mono text-xs">{m.date}</td>
+                        <td className="font-mono text-xs">
+                          <input
+                            type="date"
+                            value={inline.date}
+                            onChange={(e) => setMatchScheduleEdits((prev) => ({
+                              ...prev,
+                              [m.id]: { ...inline, date: e.target.value },
+                            }))}
+                            className="w-32 rounded border border-[var(--border)] bg-[var(--bg-secondary)] px-2 py-1 text-xs"
+                          />
+                        </td>
+                        <td className="font-mono text-xs">
+                          <input
+                            type="time"
+                            value={inline.time}
+                            onChange={(e) => setMatchScheduleEdits((prev) => ({
+                              ...prev,
+                              [m.id]: { ...inline, time: e.target.value },
+                            }))}
+                            className="w-24 rounded border border-[var(--border)] bg-[var(--bg-secondary)] px-2 py-1 text-xs"
+                          />
+                        </td>
+                        <td className="font-mono text-xs">
+                          <select
+                            value={inline.venue}
+                            onChange={(e) => setMatchScheduleEdits((prev) => ({
+                              ...prev,
+                              [m.id]: { ...inline, venue: e.target.value },
+                            }))}
+                            className="w-32 rounded border border-[var(--border)] bg-[var(--bg-secondary)] px-2 py-1 text-xs"
+                          >
+                            <option value="">{tx(language, 'Salle', 'Venue', 'المكان')}</option>
+                            {inline.venue && !venueOptions.includes(inline.venue) && <option value={inline.venue}>{inline.venue}</option>}
+                            {venueOptions.map((venue) => <option key={`${m.id}-${venue}`} value={venue}>{venue}</option>)}
+                          </select>
+                        </td>
                         <td className="text-sm font-medium">{p1Name}</td>
                         <td className="text-center font-mono text-sm">{m.score1 || '-'} : {m.score2 || '-'}</td>
                         <td className="text-sm font-medium">{p2Name}</td>
                         <td><span className={`rounded px-2 py-0.5 font-mono text-[10px] ${m.status === 'completed' ? 'bg-green-500/20 text-green-400' : m.status === 'live' ? 'bg-red-500/20 text-red-400' : m.status === 'postponed' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>{m.status.toUpperCase()}</span></td>
                         <td>
                           <div className="flex gap-2">
+                            <button onClick={() => saveMatchScheduleInline(m.id)} className="text-xs text-green-400 hover:underline">{tx(language, 'Date/Heure/Salle', 'Save schedule', 'حفظ الجدولة')}</button>
                             <button onClick={() => editMatch(m)} className="text-xs text-[var(--accent-blue)] hover:underline">{tx(language, 'Modifier', 'Edit', 'تعديل')}</button>
                             <button onClick={() => deleteMatch(m.id)} className="text-xs text-red-400 hover:underline">{tx(language, 'Supprimer', 'Delete', 'حذف')}</button>
                           </div>
@@ -1088,7 +1245,7 @@ export default function AdminDashboard() {
                   })}
                   {filteredMatches.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+                      <td colSpan={10} className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
                         {tx(language, 'Aucun match planifié pour le moment. Créez votre première affiche via le formulaire ci-dessus.', 'No matches scheduled yet. Create your first fixture from the form above.', 'لا توجد مباريات مجدولة حتى الآن. أنشئ أول مباراة من النموذج أعلاه.')}
                       </td>
                     </tr>
@@ -1115,13 +1272,71 @@ export default function AdminDashboard() {
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <Field label={tx(language, 'Événements Schedule (1 ligne = id | titre | date | note | venue)', 'Schedule events (1 line = id | title | date | note | venue)', 'فعاليات الجدول (سطر واحد = المعرف | العنوان | التاريخ | الوصف | المكان)')}>
-                <textarea
-                  value={settingsForm.fixtureEventsText}
-                  onChange={(e) => setSettingsForm((s) => ({ ...s, fixtureEventsText: e.target.value }))}
-                  className="admin-input min-h-[140px]"
-                  placeholder={tx(language, 'group-stage | Phases de poule | 1 Mai | Ouverture des poules | Salle 1', 'group-stage | Group stage | 1 May | Opening of pools | Table Hall 1', 'group-stage | مرحلة المجموعات | 1 مايو | افتتاح المجموعات | القاعة 1')}
-                />
+              <Field label={tx(language, 'Upcoming events (CRUD)', 'Upcoming events (CRUD)', 'الفعاليات القادمة (إضافة/تعديل/حذف)')}>
+                <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3">
+                  {fixtureEvents.map((event, index) => {
+                    const validation = fixtureEventValidation[index];
+                    const eventVenues = event.venue && !venueOptions.includes(event.venue) ? [event.venue, ...venueOptions] : venueOptions;
+                    return (
+                    <div key={`${event.id}-${index}`} className={`grid gap-2 rounded-lg border p-2 md:grid-cols-5 ${validation?.isIncomplete ? 'border-red-500/40 bg-red-500/5' : 'border-[var(--border)] bg-[var(--bg-card)]'}`}>
+                      <input
+                        value={event.id}
+                        onChange={(e) => updateFixtureEvent(index, { id: e.target.value })}
+                        className="admin-input"
+                        placeholder="event-id"
+                      />
+                      <input
+                        value={event.title}
+                        onChange={(e) => updateFixtureEvent(index, { title: e.target.value })}
+                        className="admin-input"
+                        placeholder={tx(language, 'Titre', 'Title', 'العنوان')}
+                      />
+                      <input
+                        value={event.date}
+                        onChange={(e) => updateFixtureEvent(index, { date: e.target.value })}
+                        className="admin-input"
+                        placeholder={tx(language, 'Date affichée', 'Display date', 'تاريخ العرض')}
+                      />
+                      <input
+                        value={event.note}
+                        onChange={(e) => updateFixtureEvent(index, { note: e.target.value })}
+                        className="admin-input"
+                        placeholder={tx(language, 'Note', 'Note', 'ملاحظة')}
+                      />
+                      <div className="flex gap-2">
+                        <select
+                          value={event.venue}
+                          onChange={(e) => updateFixtureEvent(index, { venue: e.target.value })}
+                          className="admin-input"
+                        >
+                          <option value="">{tx(language, 'Salle (optionnel)', 'Venue (optional)', 'المكان (اختياري)')}</option>
+                          {eventVenues.map((venue) => <option key={`${index}-${venue}`} value={venue}>{venue}</option>)}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => removeFixtureEvent(index)}
+                          className="rounded-md px-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
+                        >
+                          {tx(language, 'Suppr.', 'Delete', 'حذف')}
+                        </button>
+                      </div>
+                      {validation?.isIncomplete && (
+                        <div className="md:col-span-5 text-[11px] text-red-400">
+                          {tx(language, 'Événement incomplet: champs requis manquants', 'Incomplete event: missing required fields', 'فعالية غير مكتملة: حقول مطلوبة ناقصة')} ({validation.missingRequired.join(', ')})
+                        </div>
+                      )}
+                    </div>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={addFixtureEvent}
+                    className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-card)] hover:text-[var(--text-primary)]"
+                  >
+                    {tx(language, 'Ajouter un événement', 'Add event', 'إضافة فعالية')}
+                  </button>
+                </div>
               </Field>
               <Field label={tx(language, 'Venues du tournoi (1 ligne = 1 venue)', 'Tournament venues (1 line = 1 venue)', 'أماكن البطولة (سطر واحد = مكان واحد)')}>
                 <textarea
@@ -1134,8 +1349,13 @@ export default function AdminDashboard() {
             </div>
 
             <p className="mt-2 text-xs text-[var(--text-muted)]">
-              {tx(language, 'Supprimez simplement une ligne puis enregistrez pour retirer un événement ou une venue.', 'Delete a line and save to remove an event or venue.', 'احذف سطرًا ثم احفظ لإزالة فعالية أو مكان.')}
+              {tx(language, 'Ajoutez/modifiez/supprimez des événements puis enregistrez. Les venues restent en 1 ligne par salle.', 'Add/edit/delete events then save. Venues remain one per line.', 'أضف/عدّل/احذف الفعاليات ثم احفظ. الأماكن تبقى سطرًا واحدًا لكل مكان.')}
             </p>
+            {hasInvalidFixtureEvents && (
+              <p className="mt-2 text-xs text-red-400">
+                {tx(language, 'Certaines lignes d’événements sont incomplètes et doivent être corrigées avant la sauvegarde.', 'Some event rows are incomplete and must be fixed before saving.', 'بعض أسطر الفعاليات غير مكتملة ويجب إصلاحها قبل الحفظ.')}
+              </p>
+            )}
             <div className="mt-4 flex gap-2">
               <button onClick={saveSettings} disabled={loading || !settingsForm.name || !settingsForm.season} className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-red)] px-5 py-2 font-mono text-sm font-bold text-black transition-all hover:brightness-110 disabled:opacity-40">
                 <Save size={14} /> {tx(language, 'Enregistrer', 'Save settings', 'حفظ الإعدادات')}

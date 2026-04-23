@@ -97,8 +97,16 @@ export default async function DrawPage() {
                   <p className="section-kicker text-[var(--accent-gold)]">{t.draw.pool}</p>
                   <h2 className="mt-1 text-2xl font-display md:text-3xl">{group}</h2>
                 </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-white/60">
-                  {t.draw.playersInGroup(groups[group].length)}
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/groups/${encodeURIComponent(group)}`}
+                    className="rounded-full border border-white/14 bg-white/6 px-3 py-1 text-xs font-mono text-[var(--accent-blue)] transition hover:bg-white/12"
+                  >
+                    Details
+                  </Link>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-white/60">
+                    {t.draw.playersInGroup(groups[group].length)}
+                  </div>
                 </div>
               </div>
 
@@ -106,14 +114,14 @@ export default async function DrawPage() {
                 {groups[group]
                   .slice()
                   .sort((a, b) => b.player.points - a.player.points || a.player.name.localeCompare(b.player.name))
-                  .map((standing, index) => (
+                  .map((standing) => (
                     <div key={standing.player.id} className="flex items-center justify-between gap-4 px-5 py-4 md:px-6">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <Link href={`/players/${standing.player.id}`} className="truncate text-base font-semibold transition hover:text-[var(--accent-gold)] md:text-lg">
                             {standing.player.name}
                           </Link>
-                          {index === 0 && <span className="rounded-full border border-[rgba(255,194,71,0.25)] bg-[rgba(255,194,71,0.12)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-gold)]">{t.draw.seed}</span>}
+                          {standing.player.isSeeded && <span className="rounded-full border border-[rgba(255,194,71,0.25)] bg-[rgba(255,194,71,0.12)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-gold)]">{t.draw.seed}</span>}
                         </div>
                         <p className="mt-1 truncate text-xs text-white/55 md:text-sm">
                           {standing.player.club || standing.player.nationality}

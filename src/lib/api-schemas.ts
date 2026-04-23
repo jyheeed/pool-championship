@@ -69,6 +69,30 @@ export const drawSchema = z.object({
   groupNames: z.array(requiredText('Group name', 32)).min(1, 'At least one group name is required'),
 });
 
+export const tournamentDrawSchema = z.object({
+  format: z.enum(['groups']).default('groups'),
+  groupCount: z.coerce.number().int().min(2).max(32),
+  groupNames: z.array(requiredText('Group name', 32)).min(2).max(32),
+  seededPlayerIds: z.array(requiredText('Seeded player ID', 64)).min(1),
+});
+
+export const generateGroupMatchesSchema = z.object({
+  replaceExisting: z.boolean().optional().default(true),
+});
+
+export const scheduleGenerationSchema = z.object({
+  startDateTime: requiredText('Start date time', 64),
+  matchDurationMinutes: z.coerce.number().int().min(5).max(300),
+  breakDurationMinutes: z.coerce.number().int().min(0).max(180),
+  tableCount: z.coerce.number().int().min(1).max(64),
+});
+
+export const scheduleManualEditSchema = z.object({
+  scheduledAt: requiredText('Scheduled datetime', 64),
+  venue: requiredText('Venue', 160),
+  tableNumber: z.coerce.number().int().min(1).max(64).optional(),
+});
+
 export const registrationStatusUpdateSchema = z.object({
   id: requiredText('ID', 64),
   status: z.enum(['approved', 'rejected']),
