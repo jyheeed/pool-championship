@@ -4,6 +4,8 @@ import { consumeRateLimit, resetRateLimit } from '@/lib/api-rate-limit';
 import { loginSchema } from '@/lib/api-schemas';
 import { signToken, verifyPassword, COOKIE_NAME } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const forwardedFor = req.headers.get('x-forwarded-for');

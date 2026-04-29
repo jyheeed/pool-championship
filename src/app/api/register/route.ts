@@ -3,6 +3,8 @@ import { registerSchema } from '@/lib/api-schemas';
 import { addRegistration, checkDuplicateEmail } from '@/lib/mongo-service';
 import type { RegistrationRow } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const parsed = registerSchema.safeParse(await req.json());
