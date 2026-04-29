@@ -4,6 +4,8 @@ import { internalServerError } from '@/lib/api-errors';
 import { tournamentDrawSchema } from '@/lib/api-schemas';
 import { generateGroupDraw } from '@/lib/tournament/tournament-service';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;

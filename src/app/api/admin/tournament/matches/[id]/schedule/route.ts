@@ -4,6 +4,8 @@ import { internalServerError } from '@/lib/api-errors';
 import { scheduleManualEditSchema } from '@/lib/api-schemas';
 import { updateGroupMatchSchedule } from '@/lib/tournament/tournament-service';
 
+export const dynamic = 'force-dynamic';
+
 type Params = {
   params: Promise<{ id: string }>;
 };

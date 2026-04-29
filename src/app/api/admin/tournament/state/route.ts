@@ -3,6 +3,8 @@ import { requireAdmin } from '@/lib/api-auth';
 import { internalServerError } from '@/lib/api-errors';
 import { getTournamentState } from '@/lib/tournament/tournament-service';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const denied = await requireAdmin();
   if (denied) return denied;

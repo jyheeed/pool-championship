@@ -4,6 +4,8 @@ import { internalServerError } from '@/lib/api-errors';
 import { drawSchema } from '@/lib/api-schemas';
 import { drawPools } from '@/lib/mongo-service';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;

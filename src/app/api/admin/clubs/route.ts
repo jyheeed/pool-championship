@@ -5,6 +5,8 @@ import { clubRowSchema } from '@/lib/api-schemas';
 import { addClub, deleteClub, getClubs, updateClub } from '@/lib/mongo-service';
 import type { ClubRow } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;

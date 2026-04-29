@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { deletePlayers, updatePlayersBulk } from '@/lib/mongo-service';
 
+export const dynamic = 'force-dynamic';
+
 type BulkAction = {
   action: 'seed' | 'unseed' | 'delete';
   ids: string[];

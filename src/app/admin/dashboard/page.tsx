@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Save, Trash2, LogOut, Users, Swords, RefreshCw, Settings, Building2, UserCheck, Shuffle } from 'lucide-react';

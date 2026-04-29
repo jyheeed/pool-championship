@@ -5,6 +5,8 @@ import { scoreUpdateSchema } from '@/lib/api-schemas';
 import dbConnect from '@/lib/mongodb';
 import MatchModel from '@/models/Match';
 
+export const dynamic = 'force-dynamic';
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

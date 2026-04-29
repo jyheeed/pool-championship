@@ -5,6 +5,8 @@ import { matchRowSchema } from '@/lib/api-schemas';
 import { addMatch, updateMatch, deleteMatch, getMatches } from '@/lib/mongo-service';
 import type { MatchRow } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;

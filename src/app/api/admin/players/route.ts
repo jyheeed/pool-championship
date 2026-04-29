@@ -5,6 +5,8 @@ import { playerRowSchema } from '@/lib/api-schemas';
 import { addPlayer, updatePlayer, deletePlayer, getPlayer } from '@/lib/mongo-service';
 import type { PlayerRow } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
