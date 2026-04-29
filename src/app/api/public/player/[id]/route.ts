@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPlayerProfile } from '@/lib/mongo-service';
 import { internalServerError } from '@/lib/api-errors';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;

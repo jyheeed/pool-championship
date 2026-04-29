@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { internalServerError } from '@/lib/api-errors';
 import { getScheduleView } from '@/lib/tournament/tournament-service';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const schedule = await getScheduleView();

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getHeadToHead } from '@/lib/mongo-service';
 import { internalServerError } from '@/lib/api-errors';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const p1 = req.nextUrl.searchParams.get('p1');
   const p2 = req.nextUrl.searchParams.get('p2');

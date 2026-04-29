@@ -4,6 +4,8 @@ import { internalServerError } from '@/lib/api-errors';
 import { registrationStatusUpdateSchema } from '@/lib/api-schemas';
 import { deleteRegistration, getRegistrations, updateRegistrationStatus } from '@/lib/mongo-service';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const denied = await requireAdmin();
   if (denied) return denied;

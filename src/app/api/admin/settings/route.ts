@@ -5,6 +5,8 @@ import { tournamentSettingsSchema } from '@/lib/api-schemas';
 import { getSettings, updateSettings } from '@/lib/mongo-service';
 import type { TournamentSettings } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const denied = await requireAdmin();
   if (denied) return denied;
