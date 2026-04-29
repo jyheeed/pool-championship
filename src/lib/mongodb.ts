@@ -1,7 +1,30 @@
 import mongoose from 'mongoose';
 
 const isProd = process.env.NODE_ENV === 'production';
-const MONGODB_URI = process.env.MONGODB_URI || (isProd ? '' : 'mongodb://localhost:27017/pool-championship');
+
+// Try to get MONGODB_URI from multiple sources
+let MONGODB_URI = process.env.MONGODB_URI;
+
+// Log environment variable status in production
+if (isProd) {
+  console.log('🔍 Production environment detected');
+  console.log('MONGODB_URI status:', MONGODB_URI ? '✅ Set' : '❌ Not set');
+  
+  // Log all env vars that might contain mongo
+  const mongoKeys = Object.keys(process.env).filter(k => 
+    k.toLowerCase().includes('mongo') || 
+    k.toLowerCase().includes('database') ||
+    k.toLowerCase().includes('db_')
+  );
+  if (mongoKeys.length > 0) {
+    console.log('Found related env vars:', mongoKeys);
+  }
+}
+
+// Fallback for non-production
+if (!MONGODB_URI && !isProd) {
+  MONGODB_URI = 'mongodb://localhost:27017/pool-championship';
+}
 
 type MongooseCache = {
   conn: typeof mongoose | null;
@@ -16,10 +39,10 @@ const cached: MongooseCache = globalCache.mongoose ?? { conn: null, promise: nul
 globalCache.mongoose = cached;
 
 async function dbConnect() {
-  if (isProd && !process.env.MONGODB_URI) {
-    console.error('❌ MONGODB_URI is undefined in production');
-    console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('MONGO')));
-    throw new Error('MONGODB_URI is required in production');
+  if (isProd && !MONGODB_URI) {
+    const err = new Error('MONGODB_URI environment variable is not set in production');
+    console.error('❌ Database connection failed:', err.message);
+    throw err;
   }
 
   if (cached.conn) {
@@ -34,8 +57,13 @@ async function dbConnect() {
       connectTimeoutMS: 10000,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    console.log('🔄 Initiating MongoDB connection...');
+    cached.promise = mongoose.connect(MONGODB_URI || '', opts).then((mongoose) => {
+      console.log('✅ MongoDB connected successfully');
       return mongoose;
+    }).catch((err) => {
+      console.error('❌ MongoDB connection error:', err.message);
+      throw err;
     });
   }
 
