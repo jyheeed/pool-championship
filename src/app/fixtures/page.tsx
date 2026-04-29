@@ -4,6 +4,7 @@ import { getMatches, getPlayers, getSettings } from '@/lib/mongo-service';
 import type { FixtureEvent, Match, TournamentSettings } from '@/lib/types';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus } from '@/lib/i18n';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 type UpcomingEvent = FixtureEvent;

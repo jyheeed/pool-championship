@@ -5,6 +5,7 @@ import { getMatches, getSettings, getStandings } from '@/lib/mongo-service';
 import type { Match, Standing, TournamentSettings } from '@/lib/types';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus } from '@/lib/i18n';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 function getCompletionRate(total: number, completed: number) {

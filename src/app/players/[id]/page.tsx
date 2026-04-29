@@ -6,6 +6,7 @@ import { ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus } from '@/lib/i18n';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 export default async function PlayerDetailPage({ params }: { params: Promise<{ id: string }> }) {
