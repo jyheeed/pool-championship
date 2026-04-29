@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { getStandings } from '@/lib/mongo-service';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage } from '@/lib/i18n';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 export default async function DrawPage() {

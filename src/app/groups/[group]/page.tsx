@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getGroupDetail } from '@/lib/tournament/tournament-service';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 30;
 
 export default async function GroupDetailPage({ params }: { params: Promise<{ group: string }> }) {

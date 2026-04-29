@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getScheduleView } from '@/lib/tournament/tournament-service';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 30;
 
 export default async function TournamentSchedulePage() {
