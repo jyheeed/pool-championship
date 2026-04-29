@@ -112,8 +112,25 @@ async function clearOtherSeededPlayersInGroup(groupName: string, currentPlayerId
 export async function getPlayers(): Promise<Player[]> {
   await dbConnect();
   const playerDocs = await PlayerModel.find({}).lean() as DbPlayer[];
-  const matches = await getMatches();
-  const settings = await getSettings();
+  
+  // Try to get matches and settings, but don't fail if they're not available
+  let matches: Match[] = [];
+  let settings = { pointsWin: 2, pointsLoss: 0 };
+  
+  try {
+    matches = await getMatches();
+  } catch (e) {
+    console.warn('⚠️  Could not load matches:', e instanceof Error ? e.message : 'Unknown error');
+  }
+  
+  try {
+    const settingsData = await getSettings();
+    if (settingsData) {
+      settings = settingsData;
+    }
+  } catch (e) {
+    console.warn('⚠️  Could not load settings:', e instanceof Error ? e.message : 'Unknown error');
+  }
 
   return playerDocs.map((pr) => {
     const playerMatches = matches.filter(
