@@ -17,6 +17,8 @@ globalCache.mongoose = cached;
 
 async function dbConnect() {
   if (isProd && !process.env.MONGODB_URI) {
+    console.error('❌ MONGODB_URI is undefined in production');
+    console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('MONGO')));
     throw new Error('MONGODB_URI is required in production');
   }
 
