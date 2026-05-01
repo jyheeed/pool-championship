@@ -6,6 +6,21 @@ import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage }
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
+const groupAffiliations = [
+  { label: 'Royal Class', groups: ['Group C', 'Group O', 'Group A', 'Group L', 'Groupe C', 'Groupe O', 'Groupe A', 'Groupe L'] },
+  { label: 'Grand 8', groups: ['Group J', 'Group T', 'Group S', 'Group F', 'Groupe J', 'Groupe T', 'Groupe S', 'Groupe F'] },
+  { label: 'Emperor', groups: ['Group P', 'Group H', 'Group B', 'Group I', 'Groupe P', 'Groupe H', 'Groupe B', 'Groupe I'] },
+  { label: 'Friend Zone', groups: ['Group N', 'Group K', 'Groupe N', 'Groupe K'] },
+  { label: 'Break Hub', groups: ['Group R', 'Group G', 'Group Q', 'Group M', 'Group E', 'Group D', 'Groupe R', 'Groupe G', 'Groupe Q', 'Groupe M', 'Groupe E', 'Groupe D'] },
+] as const;
+
+const groupOrder = groupAffiliations.flatMap((entry) => entry.groups);
+
+function getGroupAffiliation(groupName: string) {
+  const normalizedGroupName = groupName.trim().toLowerCase();
+  return groupAffiliations.find((entry) => entry.groups.some((group) => group.toLowerCase() === normalizedGroupName));
+}
+
 export default async function DrawPage() {
   const language = normalizeLanguage(cookies().get(LANGUAGE_COOKIE)?.value ?? DEFAULT_LANGUAGE);
   const t = getTranslations(language);
@@ -25,7 +40,15 @@ export default async function DrawPage() {
     groups[key].push(standing);
   }
 
-  const groupKeys = Object.keys(groups).sort();
+  const groupKeys = Object.keys(groups).sort((left, right) => {
+    const leftIndex = groupOrder.indexOf(left);
+    const rightIndex = groupOrder.indexOf(right);
+
+    if (leftIndex === -1 && rightIndex === -1) return left.localeCompare(right);
+    if (leftIndex === -1) return 1;
+    if (rightIndex === -1) return -1;
+    return leftIndex - rightIndex;
+  });
   const totalPlayers = standings.length;
   const groupSizes = groupKeys.map((group) => groups[group].length);
   const minSize = groupSizes.length ? Math.min(...groupSizes) : 0;
@@ -96,7 +119,9 @@ export default async function DrawPage() {
               <div className="flex items-center justify-between border-b border-white/8 px-5 py-4 md:px-6">
                 <div>
                   <p className="section-kicker text-[var(--accent-gold)]">{t.draw.pool}</p>
-                  <h2 className="mt-1 text-2xl font-display md:text-3xl">{group}</h2>
+                  <h2 className="mt-1 text-2xl font-display md:text-3xl">
+                    {getGroupAffiliation(group)?.label ? `${getGroupAffiliation(group)?.label} : ${group}` : group}
+                  </h2>
                 </div>
                 <div className="flex items-center gap-2">
                   <Link

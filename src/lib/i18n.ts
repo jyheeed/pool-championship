@@ -83,12 +83,12 @@ const translations = {
       },
     },
     draw: {
-      seasonKicker: (season: string) => `${season} structure du tournoi`,
-      title: 'Tirage & Poules',
+      seasonKicker: (season: string) => `${season} affectation du tournoi`,
+      title: 'Affectation & Poules',
       subtitle:
-        'Explorez le tirage officiel du Championnat tunisien de billard 2026, avec la répartition des groupes, les têtes de série et la structure du tournoi dès le début de la compétition.',
+        'Explorez l’affectation officielle du Championnat tunisien de billard 2026, avec la répartition des groupes, les têtes de série et la structure du tournoi dès le début de la compétition.',
       officialParagraph:
-        'Les joueurs sont répartis dans leurs poules selon leur classement. Les têtes de série sont placées en premier, puis les autres joueurs sont distribués aléatoirement pour garantir des groupes équilibrés dès le coup d\'envoi.',
+        'Les joueurs sont répartis dans leurs poules selon leur classement. Les têtes de série sont placées en premier, puis l’affectation des groupes est présentée clairement pour garantir une lecture simple dès le coup d\'envoi.',
       readOnly: 'Lecture seule',
       adminManaged: 'Géré par l\'admin',
       balancedPools: 'Poules équilibrées',
@@ -244,12 +244,12 @@ const translations = {
       },
     },
     draw: {
-      seasonKicker: (season: string) => `${season} tournament structure`,
-      title: 'Draw & Pools',
+      seasonKicker: (season: string) => `${season} tournament allocation`,
+      title: 'Allocation & Pools',
       subtitle:
-        'Explore the official draw of the Tunisian Pool Championship 2026, including player group allocation, seeded players, and the tournament structure from the moment the competition begins.',
+        'Explore the official allocation of the Tunisian Pool Championship 2026, including player group allocation, seeded players, and the tournament structure from the moment the competition begins.',
       officialParagraph:
-        'Players are distributed into their pools based on ranking. Seeded players are placed first, then the remaining players are randomly allocated to ensure balanced groups from the very first match.',
+        'Players are distributed into their pools based on ranking. Seeded players are placed first, then the group allocation is shown clearly so the competition layout is easy to follow from the very first match.',
       readOnly: 'Read only',
       adminManaged: 'Admin managed',
       balancedPools: 'Balanced pools',
@@ -405,12 +405,12 @@ const translations = {
       },
     },
     draw: {
-      seasonKicker: (season: string) => `بنية البطولة لموسم ${season}`,
-      title: 'القرعة والمجموعات',
+      seasonKicker: (season: string) => `توزيع البطولة لموسم ${season}`,
+      title: 'التوزيع والمجموعات',
       subtitle:
-        'استكشف القرعة الرسمية لبطولة تونس للبلياردو 2026، بما في ذلك توزيع اللاعبين على المجموعات، اللاعبين المصنفين، وهيكل البطولة منذ انطلاق المنافسة.',
+        'استكشف التوزيع الرسمي لبطولة تونس للبلياردو 2026، بما في ذلك توزيع اللاعبين على المجموعات، اللاعبين المصنفين، وهيكل البطولة منذ انطلاق المنافسة.',
       officialParagraph:
-        'يتم توزيع اللاعبين على مجموعاتهم بناءً على ترتيبهم. يُوضع المصنفون أولاً، ثم يُوزَّع اللاعبون المتبقون عشوائياً لضمان مجموعات متوازنة منذ أول مباراة.',
+        'يتم توزيع اللاعبين على مجموعاتهم بناءً على ترتيبهم. يُوضع المصنفون أولاً، ثم يُعرض توزيع المجموعات بوضوح لتسهيل متابعة شكل المنافسة منذ أول مباراة.',
       readOnly: 'عرض فقط',
       adminManaged: 'تحت إدارة المشرف',
       balancedPools: 'مجموعات متوازنة',
