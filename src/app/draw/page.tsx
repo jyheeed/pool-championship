@@ -14,7 +14,7 @@ const groupAffiliations = [
   { label: 'Break Hub', groups: ['Group R', 'Group G', 'Group Q', 'Group M', 'Group E', 'Group D', 'Groupe R', 'Groupe G', 'Groupe Q', 'Groupe M', 'Groupe E', 'Groupe D'] },
 ] as const;
 
-const groupOrder = groupAffiliations.flatMap((entry) => entry.groups);
+const groupOrder: string[] = groupAffiliations.flatMap((entry) => entry.groups);
 
 function getGroupAffiliation(groupName: string) {
   const normalizedGroupName = groupName.trim().toLowerCase();
