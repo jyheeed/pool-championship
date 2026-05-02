@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage } from '@/lib/i18n';
+import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, type Language } from '@/lib/i18n';
 
 const groupAffiliations = [
   { label: 'Royal Class', groups: ['Group C', 'Group O', 'Group A', 'Group L', 'Groupe C', 'Groupe O', 'Groupe A', 'Groupe L'] },
@@ -32,7 +32,7 @@ function getGroupAffiliation(groupName: string) {
 }
 
 export default function DrawPage() {
-  const [language, setLanguage] = useState<string>(DEFAULT_LANGUAGE);
+  const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE);
   const [standings, setStandings] = useState<Standing[] | null>(null);
 
   const t = getTranslations(language);
