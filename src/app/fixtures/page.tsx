@@ -3,7 +3,7 @@
 import { CalendarDays } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Match, TournamentSettings } from '@/lib/types';
-import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus } from '@/lib/i18n';
+import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus, type Language } from '@/lib/i18n';
 
 type FixtureEvent = {
   id: string;
@@ -26,7 +26,7 @@ function formatDateOnly(dateStr: string): string {
 }
 
 export default function FixturesPage() {
-  const [language, setLanguage] = useState<string>(DEFAULT_LANGUAGE);
+  const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE);
   const [fixtures, setFixtures] = useState<Match[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
