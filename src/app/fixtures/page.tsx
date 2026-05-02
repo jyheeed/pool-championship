@@ -2,7 +2,7 @@
 
 import { CalendarDays } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { Match, TournamentSettings } from '@/lib/types';
+import type { Match, Standing, TournamentSettings } from '@/lib/types';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus, type Language } from '@/lib/i18n';
 
 type FixtureEvent = {
@@ -49,18 +49,48 @@ export default function FixturesPage() {
 
         const matchesData = await matchesRes.json();
         const settingsData = await settingsRes.json();
+        const standingsRes = await fetch('/api/public/standings');
+        const standingsData = await standingsRes.json();
+
+        let groupMatches: Match[] = [];
 
         if (matchesData.success) {
-          const groupMatches = (matchesData.data || []).filter((match: Match) => {
+          groupMatches = (matchesData.data || []).filter((match: Match) => {
             const groupName = (match.groupName || '').trim();
             return match.phase === 'group' || groupName.length > 0;
           });
-          setFixtures(groupMatches);
+        }
 
-          const groups = Array.from(new Set(groupMatches.map((m: Match) => m.groupName).filter(Boolean)));
-          if (groups.length > 0) {
-            setSelectedGroup(groups[0] as string);
+        if (groupMatches.length === 0 && standingsData.success) {
+          const standings: Standing[] = standingsData.data || [];
+          const hasGroups = standings.some((standing) => Boolean(standing.player.poolGroup?.trim()));
+
+          if (hasGroups) {
+            const generateRes = await fetch('/api/public/tournament/group-matches', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ replaceExisting: true }),
+            });
+
+            const generateData = await generateRes.json();
+            if (generateData.success) {
+              const refreshedRes = await fetch('/api/public/matches');
+              const refreshedData = await refreshedRes.json();
+              if (refreshedData.success) {
+                groupMatches = (refreshedData.data || []).filter((match: Match) => {
+                  const groupName = (match.groupName || '').trim();
+                  return match.phase === 'group' || groupName.length > 0;
+                });
+              }
+            }
           }
+        }
+
+        setFixtures(groupMatches);
+
+        const groups = Array.from(new Set(groupMatches.map((m: Match) => m.groupName).filter(Boolean)));
+        if (groups.length > 0) {
+          setSelectedGroup(groups[0] as string);
         }
 
         if (settingsData.success) {
