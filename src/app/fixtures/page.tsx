@@ -51,9 +51,10 @@ export default function FixturesPage() {
         const settingsData = await settingsRes.json();
 
         if (matchesData.success) {
-          const groupMatches = (matchesData.data || []).filter(
-            (match: Match) => match.phase === 'group' && (match.status === 'scheduled' || match.status === 'postponed' || match.status === 'live')
-          );
+          const groupMatches = (matchesData.data || []).filter((match: Match) => {
+            const groupName = (match.groupName || '').trim();
+            return match.phase === 'group' || groupName.length > 0;
+          });
           setFixtures(groupMatches);
 
           const groups = Array.from(new Set(groupMatches.map((m: Match) => m.groupName).filter(Boolean)));
