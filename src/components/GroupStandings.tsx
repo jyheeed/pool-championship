@@ -89,7 +89,7 @@ export default function GroupStandings({ standings, language, tableHeadings }: G
                   <td>
                     <Link href={`/players/${player.id}`} className="font-medium transition hover:text-[var(--accent-gold)]">
                       {player.name}
-                      {player.nickname && <span className="ml-1.5 text-xs text-white/45">"{player.nickname}"</span>}
+                      {player.nickname && <span className="ml-1.5 text-xs text-white/45">&ldquo;{player.nickname}&rdquo;</span>}
                     </Link>
                   </td>
                   <td className="text-center font-mono text-sm">{player.played}</td>
