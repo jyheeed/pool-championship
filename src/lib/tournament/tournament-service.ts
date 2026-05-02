@@ -2,7 +2,7 @@ import dbConnect from '@/lib/mongodb';
 import PlayerModel from '@/models/Player';
 import MatchModel from '@/models/Match';
 import { getSettings } from '@/lib/mongo-service';
-import { generateBalancedGroupDraw } from '@/lib/tournament/draw-engine';
+import { buildPoolVenueAssignments, generateBalancedGroupDraw } from '@/lib/tournament/draw-engine';
 import { generateGroupRoundRobin } from '@/lib/tournament/round-robin-engine';
 import { generateSchedule } from '@/lib/tournament/schedule-engine';
 
@@ -22,6 +22,7 @@ type TournamentPlayerDoc = {
   id: string;
   name: string;
   poolGroup?: string;
+  poolVenue?: string;
   isSeeded?: boolean;
 };
 
@@ -143,11 +144,13 @@ export async function generateGroupDraw(input: DrawInput) {
     }
   }
 
+  const venueByGroup = buildPoolVenueAssignments(groupNames);
+
   await Promise.all(
     players.map((player) => {
       const poolGroup = playerToGroup.get(player.id) || '';
       const isSeeded = input.seededPlayerIds.includes(player.id);
-      return PlayerModel.findOneAndUpdate({ id: player.id }, { poolGroup, isSeeded });
+      return PlayerModel.findOneAndUpdate({ id: player.id }, { poolGroup, poolVenue: venueByGroup[poolGroup] || '', isSeeded });
     })
   );
 
@@ -155,6 +158,40 @@ export async function generateGroupDraw(input: DrawInput) {
   await MatchModel.deleteMany({ phase: 'group' });
 
   return draw;
+}
+
+export async function assignGroupVenuesFromExistingGroups() {
+  await dbConnect();
+
+  const players = (await PlayerModel.find({ poolGroup: { $nin: [null, ''] } }).sort({ poolGroup: 1, id: 1 }).lean()) as TournamentPlayerDoc[];
+  const groupNames = Array.from(new Set(players.map((player) => player.poolGroup?.trim()).filter((groupName): groupName is string => Boolean(groupName))));
+
+  if (groupNames.length === 0) {
+    throw new Error('No groups found. Generate the group draw first.');
+  }
+
+  const venueByGroup = buildPoolVenueAssignments(groupNames);
+  if (Object.keys(venueByGroup).length === 0) {
+    throw new Error('Venue allocation is only available for the 20-group tournament format.');
+  }
+
+  await Promise.all(
+    players.map((player) => {
+      const poolGroup = player.poolGroup?.trim() || '';
+      return PlayerModel.findOneAndUpdate({ id: player.id }, { poolVenue: venueByGroup[poolGroup] || '' });
+    })
+  );
+
+  await Promise.all(
+    groupNames.map((groupName) =>
+      MatchModel.updateMany(
+        { phase: 'group', groupName },
+        { $set: { venue: venueByGroup[groupName] || '' } }
+      )
+    )
+  );
+
+  return { count: groupNames.length };
 }
 
 export async function generateGroupMatches(replaceExisting = true) {
@@ -186,6 +223,7 @@ export async function generateGroupMatches(replaceExisting = true) {
 
   for (const [groupName, playerIds] of Array.from(groups.entries())) {
     const roundRobin = generateGroupRoundRobin({ groupName, playerIds });
+    const groupVenue = players.find((player) => player.poolGroup?.trim() === groupName)?.poolVenue?.trim();
 
     roundRobin.matches.forEach((pair, index) => {
       documents.push({
@@ -203,7 +241,7 @@ export async function generateGroupMatches(replaceExisting = true) {
         status: 'scheduled',
         tableNumber: undefined,
         scheduledAt: undefined,
-        venue: undefined,
+        venue: groupVenue || undefined,
         discipline: '8-ball',
       });
     });
@@ -320,6 +358,7 @@ export async function getGroupDetail(groupNameRaw: string) {
   const groupName = groupNameRaw.trim();
   const players = (await PlayerModel.find({ poolGroup: groupName }).sort({ name: 1 }).lean()) as TournamentPlayerDoc[];
   const matches = (await MatchModel.find({ phase: 'group', groupName }).sort({ roundNumber: 1, scheduledAt: 1, date: 1, time: 1 }).lean()) as TournamentMatchDoc[];
+  const venue = players.find((player) => player.poolVenue?.trim())?.poolVenue?.trim() || null;
 
   const playerMap = new Map(players.map((player) => [player.id, player.name]));
 
@@ -341,6 +380,7 @@ export async function getGroupDetail(groupNameRaw: string) {
 
   return {
     groupName,
+    venue,
     players,
     matches: enriched,
   };

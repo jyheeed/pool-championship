@@ -5,6 +5,7 @@ import ClubModel from '@/models/Club';
 import RegistrationModel from '@/models/Registration';
 import SettingsModel from '@/models/Settings';
 import { sendRegistrationApprovalEmail } from '@/lib/mailer';
+import { buildPoolVenueAssignments } from '@/lib/tournament/draw-engine';
 import type {
   Club,
   FixtureEvent,
@@ -35,6 +36,7 @@ type DbPlayer = {
   club?: string;
   photoUrl?: string;
   poolGroup?: string;
+  poolVenue?: string;
   isSeeded?: boolean;
 };
 
@@ -161,6 +163,7 @@ export async function getPlayers(): Promise<Player[]> {
       club: pr.club || undefined,
       photoUrl: pr.photoUrl || undefined,
       poolGroup: pr.poolGroup || undefined,
+      poolVenue: pr.poolVenue || undefined,
       isSeeded: Boolean(pr.isSeeded),
       wins,
       losses,
@@ -199,6 +202,7 @@ export async function addPlayer(player: PlayerRow): Promise<void> {
     club: player.club,
     photoUrl: player.photo_url,
     poolGroup,
+    poolVenue: undefined,
     isSeeded,
   });
 }
@@ -364,24 +368,32 @@ export async function deleteClub(id: string): Promise<void> {
 // ── Registrations ──
 
 export async function getRegistrations(): Promise<Registration[]> {
-  await dbConnect();
-  const regDocs = await RegistrationModel.find({}).lean() as unknown as DbRegistration[];
-  return regDocs.map((rr) => ({
-    id: rr.id,
-    name: rr.name,
-    nickname: rr.nickname || undefined,
-    nationality: rr.nationality || 'Tunisia',
-    age: rr.age || undefined,
-    email: rr.email,
-    phone: rr.phone,
-    city: rr.city,
-    cin: rr.cin || undefined,
-    club: rr.club || undefined,
-    photoUrl: rr.photoUrl || undefined,
-    status: rr.status as Registration['status'],
-    createdAt: rr.createdAt ? rr.createdAt.toISOString() : new Date().toISOString(),
-    approvedAt: rr.approvedAt ? rr.approvedAt.toISOString() : undefined,
-  }));
+  try {
+    console.log('[mongo-service] getRegistrations: Connecting to database...');
+    await dbConnect();
+    console.log('[mongo-service] getRegistrations: Querying RegistrationModel.find()...');
+    const regDocs = await RegistrationModel.find({}).lean() as unknown as DbRegistration[];
+    console.log(`[mongo-service] getRegistrations: Found ${regDocs.length} registrations`);
+    return regDocs.map((rr) => ({
+      id: rr.id,
+      name: rr.name,
+      nickname: rr.nickname || undefined,
+      nationality: rr.nationality || 'Tunisia',
+      age: rr.age || undefined,
+      email: rr.email,
+      phone: rr.phone,
+      city: rr.city,
+      cin: rr.cin || undefined,
+      club: rr.club || undefined,
+      photoUrl: rr.photoUrl || undefined,
+      status: rr.status as Registration['status'],
+      createdAt: rr.createdAt ? rr.createdAt.toISOString() : new Date().toISOString(),
+      approvedAt: rr.approvedAt ? rr.approvedAt.toISOString() : undefined,
+    }));
+  } catch (error: unknown) {
+    console.error('[mongo-service] getRegistrations: Error -', error instanceof Error ? error.message : String(error), error instanceof Error ? error.stack : '');
+    throw error;
+  }
 }
 
 export async function addRegistration(reg: RegistrationRow): Promise<void> {
@@ -403,39 +415,67 @@ export async function addRegistration(reg: RegistrationRow): Promise<void> {
 }
 
 export async function updateRegistrationStatus(id: string, status: 'approved' | 'rejected'): Promise<void> {
-  await dbConnect();
-  const update: Record<string, unknown> = { status };
-  if (status === 'approved') update.approvedAt = new Date();
+  try {
+    console.log(`[mongo-service] updateRegistrationStatus: Connecting for registration ${id}...`);
+    await dbConnect();
+    const update: Record<string, unknown> = { status };
+    if (status === 'approved') update.approvedAt = new Date();
 
-  const reg = await RegistrationModel.findOneAndUpdate({ id }, update, { new: true }).lean();
-  if (reg && status === 'approved') {
-    const existingPlayer = await PlayerModel.findOne({ id: reg.id });
-    if (!existingPlayer) {
-      await addPlayer({
-        id: reg.id,
-        name: reg.name,
-        nickname: reg.nickname || '',
-        nationality: reg.nationality || 'Tunisia',
-        age: reg.age?.toString() || '',
-        club: reg.club || '',
-        photo_url: reg.photoUrl || '',
-        pool_group: '',
-        is_seeded: 'false',
-      });
+    console.log(`[mongo-service] updateRegistrationStatus: Updating registration ${id} to ${status}...`);
+    const reg = await RegistrationModel.findOneAndUpdate({ id }, update, { new: true }).lean();
+    if (!reg) {
+      console.warn(`[mongo-service] updateRegistrationStatus: Registration ${id} not found`);
+      return;
     }
+    
+    if (status === 'approved') {
+      console.log(`[mongo-service] updateRegistrationStatus: ${id} approved, checking for player...`);
+      const existingPlayer = await PlayerModel.findOne({ id: reg.id });
+      if (!existingPlayer) {
+        console.log(`[mongo-service] updateRegistrationStatus: Adding player for ${id}...`);
+        await addPlayer({
+          id: reg.id,
+          name: reg.name,
+          nickname: reg.nickname || '',
+          nationality: reg.nationality || 'Tunisia',
+          age: reg.age?.toString() || '',
+          club: reg.club || '',
+          photo_url: reg.photoUrl || '',
+          pool_group: '',
+          is_seeded: 'false',
+        });
+      }
 
-    await sendRegistrationApprovalEmail({
-      email: reg.email,
-      name: reg.name,
-      club: reg.club || undefined,
-      city: reg.city || undefined,
-    });
+      console.log(`[mongo-service] updateRegistrationStatus: Sending approval email to ${reg.email}...`);
+      await sendRegistrationApprovalEmail({
+        email: reg.email,
+        name: reg.name,
+        club: reg.club || undefined,
+        city: reg.city || undefined,
+      });
+      console.log(`[mongo-service] updateRegistrationStatus: Email sent for ${id}`);
+    }
+  } catch (error: unknown) {
+    console.error('[mongo-service] updateRegistrationStatus: Error -', error instanceof Error ? error.message : String(error), error instanceof Error ? error.stack : '');
+    throw error;
   }
 }
 
 export async function deleteRegistration(id: string): Promise<void> {
-  await dbConnect();
-  await RegistrationModel.findOneAndDelete({ id });
+  try {
+    console.log(`[mongo-service] deleteRegistration: Connecting for registration ${id}...`);
+    await dbConnect();
+    console.log(`[mongo-service] deleteRegistration: Deleting registration ${id}...`);
+    const result = await RegistrationModel.findOneAndDelete({ id });
+    if (!result) {
+      console.warn(`[mongo-service] deleteRegistration: Registration ${id} not found`);
+    } else {
+      console.log(`[mongo-service] deleteRegistration: Successfully deleted registration ${id}`);
+    }
+  } catch (error: unknown) {
+    console.error('[mongo-service] deleteRegistration: Error -', error instanceof Error ? error.message : String(error), error instanceof Error ? error.stack : '');
+    throw error;
+  }
 }
 
 // ── Settings ──
@@ -615,8 +655,18 @@ export async function drawPools(groupNames: string[]): Promise<void> {
     groups[targetIndex].players.push(playerId);
   }
 
-  const updates = groups.flatMap((group) => group.players.map((playerId) => ({ playerId, groupName: group.name })));
-  await Promise.all(updates.map(({ playerId, groupName }) => PlayerModel.findOneAndUpdate({ id: playerId }, { poolGroup: groupName })));
+  const venueByGroup = buildPoolVenueAssignments(normalizedGroupNames);
+  const updates = groups.flatMap((group) => group.players.map((playerId) => ({
+    playerId,
+    groupName: group.name,
+    poolVenue: venueByGroup[group.name] || '',
+  })));
+
+  await Promise.all(
+    updates.map(({ playerId, groupName, poolVenue }) =>
+      PlayerModel.findOneAndUpdate({ id: playerId }, { poolGroup: groupName, poolVenue })
+    )
+  );
 }
 
 export async function getHeadToHead(p1Id: string, p2Id: string): Promise<HeadToHead | null> {

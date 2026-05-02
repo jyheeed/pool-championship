@@ -46,23 +46,28 @@ async function dbConnect() {
   }
 
   if (cached.conn) {
+    console.log('[dbConnect] Using cached MongoDB connection');
     return cached.conn;
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 30000,
+      connectTimeoutMS: 30000,
     };
 
-    console.log('🔄 Initiating MongoDB connection...');
-    cached.promise = mongoose.connect(MONGODB_URI || '', opts).then((mongoose) => {
-      console.log('✅ MongoDB connected successfully');
+    const mongoUri = MONGODB_URI || '';
+    const uriPreview = mongoUri.replace(/:[^:]*@/, ':***@');
+    console.log(`[dbConnect] Initiating MongoDB connection to: ${uriPreview}`);
+    
+    cached.promise = mongoose.connect(mongoUri, opts).then((mongoose) => {
+      console.log('[dbConnect] ✅ MongoDB connected successfully');
       return mongoose;
     }).catch((err) => {
-      console.error('❌ MongoDB connection error:', err.message);
+      console.error('[dbConnect] ❌ MongoDB connection error:', err.message);
+      console.error('[dbConnect] Error details:', err);
       throw err;
     });
   }
@@ -71,6 +76,7 @@ async function dbConnect() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    console.error('[dbConnect] Connection attempt failed, cleared promise');
     throw e;
   }
 

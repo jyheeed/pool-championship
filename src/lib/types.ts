@@ -18,6 +18,7 @@ export interface Player {
   frameDiff: number;
   highestBreak?: number;
   poolGroup?: string;
+  poolVenue?: string;
 }
 
 export interface Match {

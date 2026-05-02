@@ -1,10 +1,8 @@
-import Link from 'next/link';
-import { cookies } from 'next/headers';
-import { getStandings } from '@/lib/mongo-service';
-import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage } from '@/lib/i18n';
+'use client';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 60;
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage } from '@/lib/i18n';
 
 const groupAffiliations = [
   { label: 'Royal Class', groups: ['Group C', 'Group O', 'Group A', 'Group L', 'Groupe C', 'Groupe O', 'Groupe A', 'Groupe L'] },
@@ -16,24 +14,56 @@ const groupAffiliations = [
 
 const groupOrder: string[] = groupAffiliations.flatMap((entry) => entry.groups);
 
+type Standing = {
+  player: {
+    id: string;
+    name: string;
+    poolGroup?: string;
+    club?: string;
+    nationality?: string;
+    points: number;
+    isSeeded?: boolean;
+  };
+};
+
 function getGroupAffiliation(groupName: string) {
   const normalizedGroupName = groupName.trim().toLowerCase();
   return groupAffiliations.find((entry) => entry.groups.some((group) => group.toLowerCase() === normalizedGroupName));
 }
 
-export default async function DrawPage() {
-  const language = normalizeLanguage(cookies().get(LANGUAGE_COOKIE)?.value ?? DEFAULT_LANGUAGE);
+export default function DrawPage() {
+  const [language, setLanguage] = useState<string>(DEFAULT_LANGUAGE);
+  const [standings, setStandings] = useState<Standing[] | null>(null);
+
   const t = getTranslations(language);
 
-  let standings;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedLanguage = localStorage.getItem(LANGUAGE_COOKIE) ?? DEFAULT_LANGUAGE;
+      setLanguage(normalizeLanguage(storedLanguage));
+    }
 
-  try {
-    standings = await getStandings();
-  } catch {
-    return <div className="panel p-12 text-center text-white/60">{language === 'fr' ? 'Impossible de charger les groupes.' : language === 'ar' ? 'تعذر تحميل المجموعات.' : 'Failed to load groups.'}</div>;
+    const loadData = async () => {
+      try {
+        const standingsRes = await fetch('/api/public/standings');
+        const standingsData = await standingsRes.json();
+
+        if (standingsData.success) {
+          setStandings(standingsData.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to load tournament data:', error);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  if (!standings) {
+    return <div className="panel p-12 text-center text-white/60">Loading groups...</div>;
   }
 
-  const groups: Record<string, typeof standings> = {};
+  const groups: Record<string, Standing[]> = {};
   for (const standing of standings) {
     const key = standing.player.poolGroup || 'Unassigned';
     if (!groups[key]) groups[key] = [];

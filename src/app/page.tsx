@@ -3,7 +3,8 @@ import { CalendarDays, ChevronRight, Trophy, Users } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { getMatches, getSettings, getStandings } from '@/lib/mongo-service';
 import type { Match, Standing, TournamentSettings } from '@/lib/types';
-import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus } from '@/lib/i18n';
+import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage } from '@/lib/i18n';
+import GroupStandings from '@/components/GroupStandings';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
@@ -56,13 +57,9 @@ export default async function HomePage() {
 
   const topPlayer = standings[0]?.player;
   const completedMatches = allMatches.filter((match) => match.status === 'completed');
-  const upcomingMatches = allMatches
-    .filter((match) => match.status === 'scheduled' || match.status === 'live' || match.status === 'postponed')
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 4);
-  const recentMatches = [...completedMatches]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 4);
+  const upcomingMatchesCount = allMatches.filter(
+    (match) => match.status === 'scheduled' || match.status === 'live' || match.status === 'postponed',
+  ).length;
 
   const totalPlayers = standings.length;
   const totalMatches = allMatches.length;
@@ -127,7 +124,7 @@ export default async function HomePage() {
               {[
                 { label: t.home.playersRegistered, value: totalPlayers.toString(), icon: Users },
                 { label: t.home.matchesCompletedLabel, value: completedMatches.length.toString(), icon: Trophy },
-                { label: t.home.nextFixturesLoaded, value: upcomingMatches.length.toString(), icon: CalendarDays },
+                { label: t.home.nextFixturesLoaded, value: upcomingMatchesCount.toString(), icon: CalendarDays },
               ].map(({ label, value, icon: Icon }) => (
                 <div key={label} className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -158,8 +155,9 @@ export default async function HomePage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full standings-table">
-              <thead>
+            <div className="max-h-[560px] overflow-y-auto">
+              <table className="w-full standings-table">
+                <thead className="sticky top-0 z-10 bg-black/60 backdrop-blur">
                 <tr>
                   <th>{t.home.tableHeadings.rank}</th>
                   <th>{t.home.tableHeadings.player}</th>
@@ -203,86 +201,12 @@ export default async function HomePage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </section>
 
-        <div className="space-y-6">
-          <section className="panel mini-panel p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="section-kicker text-[var(--accent-blue)]">{t.home.upcoming}</p>
-                <h2 className="mt-1 text-2xl font-semibold">{t.home.scheduleFocus}</h2>
-              </div>
-              <Link href="/fixtures" className="text-sm text-white/65 transition hover:text-white">
-                {t.home.fullSchedule}
-              </Link>
-            </div>
+           <GroupStandings standings={standings} language={language} tableHeadings={t.home.tableHeadings} />
 
-            <div className="mt-4 space-y-3">
-              {upcomingMatches.length === 0 && (
-                <div className="rounded-2xl border border-white/8 bg-white/5 p-4 text-sm text-white/60">
-                  {t.home.noUpcomingFixtures}
-                </div>
-              )}
-
-              {upcomingMatches.map((match) => (
-                <div key={match.id} className="rounded-2xl border border-white/8 bg-white/5 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.22em] text-white/45">{match.round}</p>
-                      <p className="mt-2 font-semibold">{match.player1Name} <span className="text-white/35">vs</span> {match.player2Name}</p>
-                    </div>
-                    <span className={`status-pill ${match.status === 'postponed' ? 'status-postponed' : match.status === 'live' ? 'status-live' : 'status-scheduled'}`}>
-                        {translateStatus(language, match.status)}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm text-white/62">
-                    {match.date}{match.time ? ` · ${match.time}` : ''}{match.venue ? ` · ${match.venue}` : ''}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="panel mini-panel p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="section-kicker text-[var(--accent-green)]">{t.home.completed}</p>
-                <h2 className="mt-1 text-2xl font-semibold">{t.home.latestResults}</h2>
-              </div>
-              <Link href="/results" className="text-sm text-white/65 transition hover:text-white">
-                {t.home.resultsCentre}
-              </Link>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {recentMatches.length === 0 && (
-                <div className="rounded-2xl border border-white/8 bg-white/5 p-4 text-sm text-white/60">
-                  {t.home.noCompletedMatches}
-                </div>
-              )}
-
-              {recentMatches.map((match) => (
-                <div key={match.id} className="rounded-2xl border border-white/8 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-white/45">
-                    {match.round} · {match.date}
-                  </p>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className={`font-medium ${(match.score1 ?? 0) > (match.score2 ?? 0) ? 'text-[var(--accent-green)]' : ''}`}>
-                      {match.player1Name}
-                    </span>
-                    <span className="font-mono text-xl font-bold text-[var(--accent-gold)]">
-                      {match.score1} - {match.score2}
-                    </span>
-                    <span className={`text-right font-medium ${(match.score2 ?? 0) > (match.score1 ?? 0) ? 'text-[var(--accent-green)]' : ''}`}>
-                      {match.player2Name}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
       </div>
     </div>
   );

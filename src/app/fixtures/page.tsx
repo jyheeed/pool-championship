@@ -1,65 +1,85 @@
+'use client';
+
 import { CalendarDays } from 'lucide-react';
-import { cookies } from 'next/headers';
-import { getMatches, getPlayers, getSettings } from '@/lib/mongo-service';
-import type { FixtureEvent, Match, TournamentSettings } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import type { Match, TournamentSettings } from '@/lib/types';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus } from '@/lib/i18n';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 60;
+type FixtureEvent = {
+  id: string;
+  title: string;
+  date: string;
+  note: string;
+  venue?: string;
+};
 
-type UpcomingEvent = FixtureEvent;
+function formatDateOnly(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  } catch {
+    return dateStr;
+  }
+}
 
-export default async function FixturesPage() {
-  const language = normalizeLanguage(cookies().get(LANGUAGE_COOKIE)?.value ?? DEFAULT_LANGUAGE);
+export default function FixturesPage() {
+  const [language, setLanguage] = useState<string>(DEFAULT_LANGUAGE);
+  const [fixtures, setFixtures] = useState<Match[]>([]);
+  const [settings, setSettings] = useState<TournamentSettings | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const t = getTranslations(language);
 
-  let fixtures: Match[] = [];
-  let settings: TournamentSettings;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedLanguage = localStorage.getItem(LANGUAGE_COOKIE) ?? DEFAULT_LANGUAGE;
+      setLanguage(normalizeLanguage(storedLanguage));
+    }
 
-  try {
-    const [allMatches, allPlayers, tournamentSettings] = await Promise.all([
-      getMatches(),
-      getPlayers(),
-      getSettings(),
-    ]);
-    settings = tournamentSettings;
+    const loadData = async () => {
+      try {
+        const [matchesRes, settingsRes] = await Promise.all([
+          fetch('/api/public/matches'),
+          fetch('/api/public/settings'),
+        ]);
 
-    const playerGroupById = new Map(allPlayers.map((player) => [player.id, player.poolGroup || '']));
-    fixtures = allMatches
-      .filter((match) => match.phase === 'group')
-      .filter((match) => match.status === 'scheduled' || match.status === 'postponed' || match.status === 'live')
-      .filter((match) => {
-        const groupName = (match.groupName || '').trim();
-        if (!groupName) return false;
-        const p1Group = (playerGroupById.get(match.player1Id) || '').trim();
-        const p2Group = (playerGroupById.get(match.player2Id) || '').trim();
-        return p1Group === groupName && p2Group === groupName;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  } catch {
-    settings = { name: 'Pool Championship', season: '2026', pointsWin: 3, pointsLoss: 0, fixtureEvents: [], venues: [] };
+        const matchesData = await matchesRes.json();
+        const settingsData = await settingsRes.json();
+
+        if (matchesData.success) {
+          const groupMatches = (matchesData.data || []).filter(
+            (match: Match) => match.phase === 'group' && (match.status === 'scheduled' || match.status === 'postponed' || match.status === 'live')
+          );
+          setFixtures(groupMatches);
+
+          const groups = Array.from(new Set(groupMatches.map((m: Match) => m.groupName).filter(Boolean)));
+          if (groups.length > 0) {
+            setSelectedGroup(groups[0] as string);
+          }
+        }
+
+        if (settingsData.success) {
+          setSettings(settingsData.data || { name: 'Pool Championship', season: '2026', pointsWin: 3, pointsLoss: 0, fixtureEvents: [], venues: [] });
+        }
+      } catch (error) {
+        console.error('Failed to load fixtures:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  if (loading) {
+    return <div className="panel p-12 text-center text-white/60">Loading fixtures...</div>;
   }
 
-  const filteredFixtures = fixtures;
-
-  const scheduledCount = filteredFixtures.filter((match) => match.status === 'scheduled').length;
-  const liveCount = filteredFixtures.filter((match) => match.status === 'live').length;
-  const postponedCount = filteredFixtures.filter((match) => match.status === 'postponed').length;
-
-  const fallbackVenue = settings.venues?.[0] || '';
-  const upcomingEvents: UpcomingEvent[] = (settings.fixtureEvents && settings.fixtureEvents.length > 0)
-    ? settings.fixtureEvents
-    : [
-        {
-          id: 'group-stage',
-          title: t.fixtures.eventOneTitle,
-          date: t.fixtures.eventOneDate,
-          note: t.fixtures.eventOneNote,
-          venue: fallbackVenue || undefined,
-        },
-      ];
-
-  const groupedByGroup = filteredFixtures.reduce<Record<string, Record<string, Match[]>>>((acc, match) => {
+  const groupedByGroup = fixtures.reduce<Record<string, Record<string, Match[]>>>((acc, match) => {
     const groupName = (match.groupName || 'Unassigned').trim();
     const roundKey = String(match.roundNumber || 0).padStart(2, '0');
 
@@ -70,12 +90,34 @@ export default async function FixturesPage() {
     return acc;
   }, {});
 
+  const groups = Object.keys(groupedByGroup).sort((a, b) => a.localeCompare(b));
+  const selectedGroupMatches = selectedGroup ? groupedByGroup[selectedGroup] || {} : {};
+
+  const scheduledCount = fixtures.filter((m) => m.status === 'scheduled').length;
+  const liveCount = fixtures.filter((m) => m.status === 'live').length;
+  const postponedCount = fixtures.filter((m) => m.status === 'postponed').length;
+
+  const upcomingEvents: FixtureEvent[] = (settings?.fixtureEvents && settings.fixtureEvents.length > 0)
+    ? settings.fixtureEvents
+    : [
+        {
+          id: 'group-stage',
+          title: t.fixtures.eventOneTitle,
+          date: t.fixtures.eventOneDate,
+          note: t.fixtures.eventOneNote,
+          venue: settings?.venues?.[0] || undefined,
+        },
+      ];
+
   const isFr = language === 'fr';
+  const totalGroupMatches = selectedGroup
+    ? Object.values(selectedGroupMatches).reduce((sum, list) => sum + list.length, 0)
+    : 0;
 
   return (
     <div className="fixtures-shell space-y-8 animate-in lg:space-y-10">
       <section className="fixtures-hero panel p-6 md:p-8">
-        <p className="section-kicker text-[var(--accent-blue)]">{t.fixtures.seasonKicker(settings.season)}</p>
+        <p className="section-kicker text-[var(--accent-blue)]">{t.fixtures.seasonKicker(settings?.season || '2026')}</p>
         <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="page-title">{t.fixtures.title}</h1>
@@ -131,68 +173,86 @@ export default async function FixturesPage() {
         </div>
       </section>
 
-      {Object.keys(groupedByGroup).length === 0 ? (
-        upcomingEvents.length === 0 ? <div className="panel p-12 text-center text-white/60">{t.fixtures.noUpcomingFixtures}</div> : null
+      {groups.length === 0 ? (
+        <div className="panel p-12 text-center text-white/60">{t.fixtures.noUpcomingFixtures}</div>
       ) : (
-        Object.entries(groupedByGroup)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([groupName, rounds]) => {
-            const totalGroupMatches = Object.values(rounds).reduce((sum, list) => sum + list.length, 0);
-
-            return (
-          <section key={groupName} className="space-y-4">
-            <div className="fixtures-round-title flex items-center gap-3">
+        <>
+          <section className="space-y-4">
+            <div className="flex items-center gap-3">
               <CalendarDays size={18} className="text-[var(--accent-blue)]" />
-              <h2 className="text-2xl font-semibold">
-                {groupName} <span className="text-base font-normal text-white/55">({totalGroupMatches} matches)</span>
-              </h2>
+              <h2 className="text-2xl font-semibold">{t.fixtures.roundLabel}</h2>
             </div>
 
-            <div className="space-y-6">
-              {Object.entries(rounds)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([roundKey, matches]) => {
-                  const roundNumber = Number(roundKey || '0');
-
-                  return (
-                    <div key={`${groupName}-${roundKey}`} className="space-y-3">
-                      <h3 className="text-lg font-semibold text-white/80">
-                        {isFr ? `${t.fixtures.roundLabel} ${roundNumber > 0 ? roundNumber : '-'}` : `Round ${roundNumber > 0 ? roundNumber : '-'}`}
-                      </h3>
-
-                      <div className="space-y-3 stagger">
-                        {matches.map((match) => (
-                          <div key={match.id} className="fixtures-match-card panel p-5">
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                              <div className="flex-1">
-                                <p className="text-xs uppercase tracking-[0.22em] text-white/45">{t.fixtures.matchCard}</p>
-                                <p className="mt-2 text-xl font-semibold">
-                                  {match.player1Name} <span className="text-white/30">vs</span> {match.player2Name}
-                                </p>
-                              </div>
-
-                              <div className="text-center">
-                                <p className="font-mono text-sm text-white/58">{match.date}</p>
-                                {match.time && <p className="mt-1 font-mono text-xl font-semibold text-[var(--accent-gold)]">{match.time}</p>}
-                              </div>
-
-                              <div className="flex flex-col items-start gap-2 lg:items-end">
-                                <span className={`status-pill ${match.status === 'postponed' ? 'status-postponed' : match.status === 'live' ? 'status-live' : 'status-scheduled'}`}>
-                                  {translateStatus(language, match.status)}
-                                </span>
-                                {match.venue && <span className="text-sm text-white/60">{match.venue}</span>}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="flex flex-wrap gap-2">
+              {groups.map((group) => (
+                <button
+                  key={group}
+                  onClick={() => setSelectedGroup(group)}
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                    selectedGroup === group
+                      ? 'bg-[var(--accent-gold)] text-black'
+                      : 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
+                  }`}
+                >
+                  {group}
+                </button>
+              ))}
             </div>
           </section>
-            );
-          })
+
+          {selectedGroup && (
+            <section className="space-y-4">
+              <div className="fixtures-round-title flex items-center gap-3">
+                <CalendarDays size={18} className="text-[var(--accent-blue)]" />
+                <h2 className="text-2xl font-semibold">
+                  {selectedGroup} <span className="text-base font-normal text-white/55">({totalGroupMatches} matches)</span>
+                </h2>
+              </div>
+
+              <div className="space-y-6">
+                {Object.entries(selectedGroupMatches)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([roundKey, matches]) => {
+                    const roundNumber = Number(roundKey || '0');
+
+                    return (
+                      <div key={`${selectedGroup}-${roundKey}`} className="space-y-3">
+                        <h3 className="text-lg font-semibold text-white/80">
+                          {isFr ? `${t.fixtures.roundLabel} ${roundNumber > 0 ? roundNumber : '-'}` : `Round ${roundNumber > 0 ? roundNumber : '-'}`}
+                        </h3>
+
+                        <div className="space-y-3 stagger">
+                          {matches.map((match) => (
+                            <div key={match.id} className="fixtures-match-card panel p-5">
+                              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div className="flex-1">
+                                  <p className="text-xs uppercase tracking-[0.22em] text-white/45">{t.fixtures.matchCard}</p>
+                                  <p className="mt-2 text-xl font-semibold">
+                                    {match.player1Name} <span className="text-white/30">vs</span> {match.player2Name}
+                                  </p>
+                                </div>
+
+                                <div className="text-center">
+                                  <p className="font-mono text-sm text-white/58">{formatDateOnly(match.date)}</p>
+                                </div>
+
+                                <div className="flex flex-col items-start gap-2 lg:items-end">
+                                  <span className={`status-pill ${match.status === 'postponed' ? 'status-postponed' : match.status === 'live' ? 'status-live' : 'status-scheduled'}`}>
+                                    {translateStatus(language, match.status)}
+                                  </span>
+                                  {match.venue && <span className="text-sm text-white/60">{match.venue}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </div>
   );

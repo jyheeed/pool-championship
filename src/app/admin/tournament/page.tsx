@@ -176,6 +176,27 @@ export default function TournamentAdminPage() {
     applyGroupCount(nextGroupCount);
   }
 
+  async function runVenueAllocation() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/tournament/pool-venues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        flash(data.error || 'Failed to allocate pool venues');
+        return;
+      }
+
+      flash('Pool venues allocated successfully');
+      await load();
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function runDraw() {
     if (groupNames.length !== groupCount) {
       flash('Number of group names must match group count');
@@ -352,6 +373,16 @@ export default function TournamentAdminPage() {
               className="rounded-lg border border-white/20 px-3 py-2 text-sm hover:bg-white/10"
             >
               Regenerate Group Names
+            </button>
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={runVenueAllocation}
+              disabled={loading}
+              className="rounded-lg border border-[rgba(255,194,71,0.35)] bg-[rgba(255,194,71,0.08)] px-3 py-2 text-sm text-[var(--accent-gold)] hover:bg-[rgba(255,194,71,0.14)] disabled:opacity-50"
+            >
+              Tirage localisation uniquement
             </button>
           </div>
         </div>

@@ -9,6 +9,7 @@ export interface IPlayer extends Document {
   club?: string;
   photoUrl?: string;
   poolGroup?: string;
+  poolVenue?: string;
   isSeeded?: boolean;
 }
 
@@ -21,6 +22,7 @@ const PlayerSchema: Schema = new Schema({
   club: { type: String },
   photoUrl: { type: String },
   poolGroup: { type: String },
+  poolVenue: { type: String },
   isSeeded: { type: Boolean, default: false },
 }, { timestamps: true });
 

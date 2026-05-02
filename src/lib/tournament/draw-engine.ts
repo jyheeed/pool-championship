@@ -36,7 +36,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function deterministicShuffle(items: string[], seedText: string): string[] {
+export function deterministicShuffle(items: string[], seedText: string): string[] {
   const result = [...items];
   const random = mulberry32(hashString(seedText));
 
@@ -46,6 +46,71 @@ function deterministicShuffle(items: string[], seedText: string): string[] {
   }
 
   return result;
+}
+
+function canonicalGroupKey(value: string): string {
+  return value.trim().toLowerCase().replace(/^(group|groupe|pool|poule)\s+/, '').replace(/\s+/g, ' ');
+}
+
+const FIXED_POOL_VENUES: Record<string, string> = {
+  d: 'Break hub',
+  f: 'G8',
+  i: 'Emperor',
+  k: 'Friend Zone',
+  l: 'Royal Class',
+};
+
+const AUTOMATIC_POOL_VENUES = [
+  { venue: 'Friend Zone', count: 1 },
+  { venue: 'Break hub', count: 5 },
+  { venue: 'G8', count: 3 },
+  { venue: 'Royal Class', count: 3 },
+  { venue: 'Emperor', count: 3 },
+];
+
+export function buildPoolVenueAssignments(groupNames: string[]): Record<string, string> {
+  const normalizedGroupNames = groupNames.map((name) => name.trim()).filter(Boolean);
+  if (normalizedGroupNames.length !== 20) {
+    return {};
+  }
+
+  const groupByKey = new Map<string, string>();
+
+  for (const groupName of normalizedGroupNames) {
+    groupByKey.set(canonicalGroupKey(groupName), groupName);
+  }
+
+  const assignments: Record<string, string> = {};
+  const fixedGroupNames = new Set<string>();
+
+  for (const [groupKey, venue] of Object.entries(FIXED_POOL_VENUES)) {
+    const groupName = groupByKey.get(groupKey);
+    if (!groupName) {
+      throw new Error(`Missing required group for venue assignment: Group ${groupKey.toUpperCase()}`);
+    }
+
+    assignments[groupName] = venue;
+    fixedGroupNames.add(groupName);
+  }
+
+  const remainingGroups = normalizedGroupNames
+    .filter((groupName) => !fixedGroupNames.has(groupName))
+    .sort((a, b) => canonicalGroupKey(a).localeCompare(canonicalGroupKey(b)) || a.localeCompare(b));
+
+  const requiredRemaining = AUTOMATIC_POOL_VENUES.reduce((total, item) => total + item.count, 0);
+  if (remainingGroups.length !== requiredRemaining) {
+    throw new Error(`Expected ${requiredRemaining} remaining groups for automatic venue allocation, got ${remainingGroups.length}`);
+  }
+
+  let index = 0;
+  for (const item of AUTOMATIC_POOL_VENUES) {
+    for (let count = 0; count < item.count; count += 1) {
+      assignments[remainingGroups[index]] = item.venue;
+      index += 1;
+    }
+  }
+
+  return assignments;
 }
 
 function buildSnakeOrder(groupCount: number, pickCount: number): number[] {
