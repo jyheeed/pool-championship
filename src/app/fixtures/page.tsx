@@ -29,7 +29,7 @@ export default function FixturesPage() {
   const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE);
   const [fixtures, setFixtures] = useState<Match[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
-  const [selectedPhase, setSelectedPhase] = useState<'group' | 'group2' | 'knockout'>('group');
+  const [selectedPhase, setSelectedPhase] = useState<'group' | 'group2' | 'knockout'>('group2');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
