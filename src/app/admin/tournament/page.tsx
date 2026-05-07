@@ -16,6 +16,35 @@ type PlayerRow = {
 type TournamentState = {
   players: PlayerRow[];
   groups: Record<string, Array<{ id: string; name: string; isSeeded: boolean }>>;
+  phase2Groups?: Record<string, Array<{ id: string; name: string; sourceGroup: string | null }>>;
+  phase2Matches?: Array<{
+    id: string;
+    groupName: string;
+    round: string;
+    roundNumber?: number;
+    player1Id: string;
+    player2Id: string;
+    status: string;
+    scheduledAt: string | null;
+    venue: string | null;
+    tableNumber: number | null;
+    date: string;
+    time: string;
+  }>;
+  knockoutMatches?: Array<{
+    id: string;
+    groupName: string;
+    round: string;
+    roundNumber?: number;
+    player1Id: string;
+    player2Id: string;
+    status: string;
+    scheduledAt: string | null;
+    venue: string | null;
+    tableNumber: number | null;
+    date: string;
+    time: string;
+  }>;
   matches: Array<{
     id: string;
     groupName: string;
@@ -253,6 +282,71 @@ export default function TournamentAdminPage() {
     }
   }
 
+  async function runPhase2Draw() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/tournament/phase-2/draw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        flash(data.error || 'Failed to generate Phase 2 draw');
+        return;
+      }
+
+      flash(`Phase 2 draw generated: ${data.data?.totalQualified || 0} players in ${data.data?.totalGroups || 0} groups`);
+      await load();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runPhase2MatchGeneration() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/tournament/phase-2/group-matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replaceExisting: true }),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        flash(data.error || 'Failed to generate Phase 2 matches');
+        return;
+      }
+
+      flash(`Generated ${data.data?.count || 0} Phase 2 matches`);
+      await load();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runFinalDraw() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/tournament/final/draw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replaceExisting: true }),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        flash(data.error || 'Failed to generate final bracket');
+        return;
+      }
+
+      flash(`Final bracket generated with ${data.data?.count || 0} matches`);
+      await load();
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function runScheduling() {
     if (!scheduleStart) {
       flash('Schedule start datetime is required');
@@ -334,6 +428,20 @@ export default function TournamentAdminPage() {
     const byGroup = a.groupName.localeCompare(b.groupName);
     if (byGroup !== 0) return byGroup;
     const byRound = (a.roundNumber || 0) - (b.roundNumber || 0);
+    if (byRound !== 0) return byRound;
+    return a.id.localeCompare(b.id);
+  });
+
+  const knockoutMatches = [...(state?.knockoutMatches || [])].sort((a, b) => {
+    const roundOrder = (round: string): number => {
+      const normalized = round.toLowerCase();
+      if (normalized.includes('quarter')) return 1;
+      if (normalized.includes('semi')) return 2;
+      if (normalized.includes('final')) return 3;
+      return 4;
+    };
+
+    const byRound = roundOrder(a.round) - roundOrder(b.round);
     if (byRound !== 0) return byRound;
     return a.id.localeCompare(b.id);
   });
@@ -479,7 +587,101 @@ export default function TournamentAdminPage() {
       </section>
 
       <section className="panel p-6 space-y-4">
-        <h2 className="text-xl font-semibold">5. Generate Schedule</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">5. Phase 2 Draw</h2>
+            <p className="text-sm text-white/65">Selects the top 2 of each phase 1 group and splits them into 8 groups of 5.</p>
+          </div>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={runPhase2Draw}
+            className="rounded-lg border border-[rgba(255,194,71,0.35)] bg-[rgba(255,194,71,0.08)] px-4 py-2 text-sm font-semibold text-[var(--accent-gold)] disabled:opacity-50"
+          >
+            Generate Phase 2 Draw
+          </button>
+        </div>
+
+        {Object.keys(state?.phase2Groups || {}).length === 0 ? (
+          <p className="text-sm text-white/60">No Phase 2 groups generated yet.</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {Object.entries(state?.phase2Groups || {}).sort(([a], [b]) => a.localeCompare(b)).map(([groupName, groupPlayers]) => (
+              <div key={groupName} className="rounded-xl border border-white/10 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="font-semibold">{groupName}</h3>
+                  <span className="text-xs text-white/50">{groupPlayers.length}/5</span>
+                </div>
+                <ul className="space-y-1 text-sm">
+                  {groupPlayers.map((player) => (
+                    <li key={player.id} className="flex items-center justify-between gap-3">
+                      <span>{player.name}</span>
+                      <span className="text-xs text-white/50">from {player.sourceGroup || 'Unassigned'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">6. Phase 2 Matches</h2>
+            <p className="text-sm text-white/65">Same round-robin concept as phase 1: each player in the same Phase 2 group plays all others.</p>
+          </div>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={runPhase2MatchGeneration}
+            className="rounded-lg bg-white/10 px-4 py-2 text-sm hover:bg-white/15 disabled:opacity-50"
+          >
+            Generate Phase 2 Matches
+          </button>
+        </div>
+
+        <p className="text-sm text-white/65">Total generated Phase 2 matches: {state?.phase2Matches?.length || 0}</p>
+
+        {(state?.phase2Matches || []).length > 0 && (
+          <div className="overflow-auto">
+            <table className="w-full min-w-[980px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-left text-white/60">
+                  <th className="px-2 py-2">Group</th>
+                  <th className="px-2 py-2">Round</th>
+                  <th className="px-2 py-2">Players</th>
+                  <th className="px-2 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...(state?.phase2Matches || [])]
+                  .sort((a, b) => {
+                    const byGroup = a.groupName.localeCompare(b.groupName);
+                    if (byGroup !== 0) return byGroup;
+                    const byRound = (a.roundNumber || 0) - (b.roundNumber || 0);
+                    if (byRound !== 0) return byRound;
+                    return a.id.localeCompare(b.id);
+                  })
+                  .map((match) => (
+                    <tr key={match.id} className="border-b border-white/5">
+                      <td className="px-2 py-2">{match.groupName}</td>
+                      <td className="px-2 py-2">{match.roundNumber || '-'}</td>
+                      <td className="px-2 py-2">
+                        {playerNameById.get(match.player1Id) || match.player1Id} vs {playerNameById.get(match.player2Id) || match.player2Id}
+                      </td>
+                      <td className="px-2 py-2">{match.status}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="panel p-6 space-y-4">
+        <h2 className="text-xl font-semibold">7. Generate Schedule</h2>
         <div className="grid gap-3 md:grid-cols-4">
           <label className="space-y-1">
             <span className="text-xs uppercase tracking-[0.2em] text-white/45">Start datetime</span>
@@ -534,7 +736,51 @@ export default function TournamentAdminPage() {
 
       <section className="panel p-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold">6. Group Matches and Manual Edits</h2>
+          <div>
+            <h2 className="text-xl font-semibold">8. Final Phase Draw (Knockout)</h2>
+            <p className="text-sm text-white/65">Takes top 1 from each Phase 2 group and generates quarter-finals, semi-finals, and final.</p>
+          </div>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={runFinalDraw}
+            className="rounded-lg border border-[rgba(255,194,71,0.35)] bg-[rgba(255,194,71,0.08)] px-4 py-2 text-sm font-semibold text-[var(--accent-gold)] disabled:opacity-50"
+          >
+            Generate Final Bracket
+          </button>
+        </div>
+
+        <p className="text-sm text-white/65">Total knockout matches: {knockoutMatches.length}</p>
+
+        {knockoutMatches.length > 0 && (
+          <div className="overflow-auto">
+            <table className="w-full min-w-[980px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-left text-white/60">
+                  <th className="px-2 py-2">Round</th>
+                  <th className="px-2 py-2">Players</th>
+                  <th className="px-2 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {knockoutMatches.map((match) => (
+                  <tr key={match.id} className="border-b border-white/5">
+                    <td className="px-2 py-2">{match.round}</td>
+                    <td className="px-2 py-2">
+                      {playerNameById.get(match.player1Id) || match.player1Id} vs {playerNameById.get(match.player2Id) || match.player2Id}
+                    </td>
+                    <td className="px-2 py-2">{match.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="panel p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">9. Group Matches and Manual Edits</h2>
           <Link href="/schedule" className="text-sm text-[var(--accent-blue)] underline">Open Public Schedule View</Link>
         </div>
 

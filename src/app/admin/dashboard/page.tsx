@@ -98,6 +98,20 @@ interface ClubForm {
   logo_url: string;
 }
 
+interface ResetSnapshotSummary {
+  snapshotId: string;
+  reason?: string | null;
+  nextDiscipline?: string | null;
+  counts: {
+    players: number;
+    matches: number;
+    settings: number;
+    clubs: number;
+    registrations: number;
+  };
+  createdAt: string;
+}
+
 const DEFAULT_GROUP_NAMES = Array.from({ length: 20 }, (_, index) => `Group ${String.fromCharCode(65 + index)}`).join(', ');
 
 type PublicPlayerData = {
@@ -173,21 +187,24 @@ export default function AdminDashboard() {
   const [groupNames, setGroupNames] = useState(DEFAULT_GROUP_NAMES);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set());
+  const [resetSnapshots, setResetSnapshots] = useState<ResetSnapshotSummary[]>([]);
 
   const load = useCallback(async () => {
     try {
-      const [pRes, mRes, cRes, sRes, rRes] = await Promise.all([
+      const [pRes, mRes, cRes, sRes, rRes, resetHistoryRes] = await Promise.all([
         fetch('/api/public/players'),
         fetch('/api/public/matches'),
         fetch('/api/public/clubs'),
         fetch('/api/admin/settings'),
         fetch('/api/admin/registrations'),
+        fetch('/api/admin/tournament/reset/history'),
       ]);
       const pData = await pRes.json();
       const mData = await mRes.json();
       const cData = await cRes.json();
       const sData = await sRes.json();
       const rData = await rRes.json();
+      const resetHistoryData = await resetHistoryRes.json();
 
       if (pData.data) {
         setPlayers(
@@ -275,6 +292,10 @@ export default function AdminDashboard() {
           heroSubtitle: sData.data.heroSubtitle || '',
           venuesText,
         });
+      }
+
+      if (resetHistoryData.success) {
+        setResetSnapshots(resetHistoryData.data || []);
       }
 
     } catch {
@@ -492,6 +513,108 @@ export default function AdminDashboard() {
     const d = await res.json();
     flash(d.success ? tx(language, 'Tirage terminé !', 'Draw complete!', 'اكتمل السحب!') : d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
     if (d.success) await load();
+    setLoading(false);
+  }
+
+  async function resetTournamentWithArchive() {
+    const firstConfirm = confirm(
+      tx(
+        language,
+        'Cette action va ARCHIVER tout l\'historique puis réinitialiser le tournoi (tirage, résultats, programme). Continuer ?',
+        'This action will ARCHIVE all history then reset the tournament (draw, results, schedule). Continue?',
+        'سيتم أرشفة كل التاريخ ثم إعادة ضبط البطولة (القرعة والنتائج والبرنامج). هل تريد المتابعة؟'
+      )
+    );
+    if (!firstConfirm) return;
+
+    const secondConfirm = confirm(
+      tx(
+        language,
+        'Confirmation finale: le tournoi actuel sera remis à zéro. Les données resteront sauvegardées en archive interne.',
+        'Final confirmation: current tournament will be reset. Data will remain stored in internal archive.',
+        'تأكيد نهائي: سيتم تصفير البطولة الحالية مع حفظ البيانات في أرشيف داخلي.'
+      )
+    );
+    if (!secondConfirm) return;
+
+    const nextDiscipline = (window.prompt(
+      tx(language, 'Discipline suivante (optionnel):', 'Next discipline (optional):', 'التخصص القادم (اختياري):'),
+      ''
+    ) || '').trim();
+
+    const reason = (window.prompt(
+      tx(language, 'Note d\'archive (optionnel):', 'Archive note (optional):', 'ملاحظة الأرشيف (اختياري):'),
+      tx(language, 'Reset nouveau tournoi', 'Reset for new tournament', 'إعادة ضبط لبطولة جديدة')
+    ) || '').trim();
+
+    setLoading(true);
+    const res = await fetch('/api/admin/tournament/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason, nextDiscipline }),
+    });
+    const d = await res.json();
+
+    if (d.success) {
+      flash(
+        tx(
+          language,
+          `Reset terminé. Archive: ${d.data?.snapshotId}`,
+          `Reset completed. Archive: ${d.data?.snapshotId}`,
+          `اكتمل التصفير. الأرشيف: ${d.data?.snapshotId}`
+        )
+      );
+      setSelectedPlayerIds(new Set());
+      setSelectedMatchIds(new Set());
+      setEditing(null);
+      setPlayerForm(emptyPlayer);
+      setMatchForm(emptyMatch);
+      await load();
+    } else {
+      flash(d.error || tx(language, 'Erreur pendant le reset', 'Reset failed', 'حدث خطأ أثناء التصفير'));
+    }
+
+    setLoading(false);
+  }
+
+  async function restoreFromSnapshot(snapshotId: string) {
+    const confirmRestore = confirm(
+      tx(
+        language,
+        'Restaurer ce snapshot va remplacer toutes les données actuelles du tournoi. Continuer ?',
+        'Restoring this snapshot will replace all current tournament data. Continue?',
+        'استعادة هذه النسخة ستستبدل جميع بيانات البطولة الحالية. هل تريد المتابعة؟'
+      )
+    );
+    if (!confirmRestore) return;
+
+    setLoading(true);
+    const res = await fetch('/api/admin/tournament/reset/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ snapshotId }),
+    });
+    const d = await res.json();
+
+    if (d.success) {
+      flash(
+        tx(
+          language,
+          `Snapshot restauré: ${snapshotId}`,
+          `Snapshot restored: ${snapshotId}`,
+          `تمت استعادة النسخة: ${snapshotId}`
+        )
+      );
+      setSelectedPlayerIds(new Set());
+      setSelectedMatchIds(new Set());
+      setEditing(null);
+      setPlayerForm(emptyPlayer);
+      setMatchForm(emptyMatch);
+      await load();
+    } else {
+      flash(d.error || tx(language, 'Erreur restauration', 'Restore failed', 'فشلت الاستعادة'));
+    }
+
     setLoading(false);
   }
 
@@ -802,6 +925,14 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-2">
           <button onClick={load} className="rounded-lg p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-card)] hover:text-[var(--text-primary)]">
             <RefreshCw size={16} />
+          </button>
+          <button
+            onClick={resetTournamentWithArchive}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-lg border border-red-500/25 px-3 py-1.5 text-sm text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200 disabled:opacity-40"
+            title={tx(language, 'Archive puis reset du tournoi', 'Archive then reset tournament', 'أرشفة ثم تصفير البطولة')}
+          >
+            <Trash2 size={14} /> {tx(language, 'Reset tournoi', 'Reset tournament', 'تصفير البطولة')}
           </button>
           <button onClick={logout} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300">
             <LogOut size={14} /> {tx(language, 'Déconnexion', 'Logout', 'تسجيل الخروج')}
@@ -1363,6 +1494,72 @@ export default function AdminDashboard() {
                 <Save size={14} /> {tx(language, 'Enregistrer', 'Save settings', 'حفظ الإعدادات')}
               </button>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg">{tx(language, 'Historique des resets', 'Reset history', 'سجل إعادة الضبط')}</h2>
+                <p className="text-xs text-[var(--text-muted)]">
+                  {tx(
+                    language,
+                    'Chaque reset crée un snapshot complet. Vous pouvez restaurer un snapshot pour revenir à un état précédent.',
+                    'Each reset creates a full snapshot. You can restore a snapshot to return to a previous state.',
+                    'كل إعادة ضبط تنشئ نسخة كاملة. يمكنك استعادة نسخة للعودة إلى حالة سابقة.'
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={load}
+                disabled={loading}
+                className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-secondary)] disabled:opacity-40"
+              >
+                {tx(language, 'Actualiser', 'Refresh', 'تحديث')}
+              </button>
+            </div>
+
+            {resetSnapshots.length === 0 ? (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-6 text-sm text-[var(--text-muted)]">
+                {tx(language, 'Aucun snapshot disponible pour le moment.', 'No snapshots available yet.', 'لا توجد نسخ محفوظة حتى الآن.')}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full standings-table">
+                  <thead>
+                    <tr className="bg-[var(--bg-secondary)]">
+                      <th>{tx(language, 'Snapshot', 'Snapshot', 'النسخة')}</th>
+                      <th>{tx(language, 'Date', 'Date', 'التاريخ')}</th>
+                      <th>{tx(language, 'Note', 'Note', 'ملاحظة')}</th>
+                      <th>{tx(language, 'Discipline suivante', 'Next discipline', 'التخصص القادم')}</th>
+                      <th>{tx(language, 'Données', 'Data', 'البيانات')}</th>
+                      <th>{tx(language, 'Action', 'Action', 'الإجراء')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resetSnapshots.map((snapshot) => (
+                      <tr key={snapshot.snapshotId}>
+                        <td className="font-mono text-xs">{snapshot.snapshotId}</td>
+                        <td className="text-xs text-[var(--text-secondary)]">{new Date(snapshot.createdAt).toLocaleString()}</td>
+                        <td className="text-xs text-[var(--text-secondary)]">{snapshot.reason || '—'}</td>
+                        <td className="text-xs text-[var(--text-secondary)]">{snapshot.nextDiscipline || '—'}</td>
+                        <td className="text-xs text-[var(--text-secondary)]">
+                          P:{snapshot.counts.players} M:{snapshot.counts.matches} S:{snapshot.counts.settings} C:{snapshot.counts.clubs} R:{snapshot.counts.registrations}
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => restoreFromSnapshot(snapshot.snapshotId)}
+                            disabled={loading}
+                            className="rounded px-2 py-1 text-xs text-[var(--accent-blue)] transition-colors hover:bg-[var(--bg-secondary)] hover:underline disabled:opacity-40"
+                          >
+                            {tx(language, 'Restaurer', 'Restore', 'استعادة')}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

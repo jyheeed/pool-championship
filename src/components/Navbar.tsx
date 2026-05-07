@@ -11,6 +11,7 @@ const NAV = [
   { href: '/draw', key: 'draw', icon: LayoutGrid },
   { href: '/fixtures', key: 'schedule', icon: CalendarDays },
   { href: '/results', key: 'results', icon: Trophy },
+  { href: '/finals', key: 'finals', icon: Trophy },
   { href: '/players', key: 'players', icon: Users },
   { href: '/register', key: 'registration', icon: UserPlus },
 ];

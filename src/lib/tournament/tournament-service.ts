@@ -22,6 +22,7 @@ type TournamentPlayerDoc = {
   id: string;
   name: string;
   poolGroup?: string;
+  phase2Group?: string;
   poolVenue?: string;
   isSeeded?: boolean;
 };
@@ -29,7 +30,7 @@ type TournamentPlayerDoc = {
 type TournamentMatchDoc = {
   id: string;
   round: string;
-  phase?: 'group' | 'knockout';
+  phase?: 'group' | 'group2' | 'knockout';
   groupName?: string;
   roundNumber?: number;
   date: string;
@@ -85,8 +86,11 @@ export async function getTournamentState() {
   await dbConnect();
   const players = (await PlayerModel.find({}).sort({ name: 1 }).lean()) as TournamentPlayerDoc[];
   const matches = (await MatchModel.find({ phase: 'group' }).sort({ groupName: 1, roundNumber: 1, scheduledAt: 1 }).lean()) as TournamentMatchDoc[];
+  const phase2Matches = (await MatchModel.find({ phase: 'group2' }).sort({ groupName: 1, roundNumber: 1, scheduledAt: 1 }).lean()) as TournamentMatchDoc[];
+  const knockoutMatches = (await MatchModel.find({ phase: 'knockout' }).sort({ round: 1, scheduledAt: 1, id: 1 }).lean()) as TournamentMatchDoc[];
 
   const groups: Record<string, { id: string; name: string; isSeeded: boolean }[]> = {};
+  const phase2Groups: Record<string, { id: string; name: string; sourceGroup: string | null }[]> = {};
 
   for (const player of players) {
     const groupName = player.poolGroup?.trim() || 'Unassigned';
@@ -96,6 +100,16 @@ export async function getTournamentState() {
       name: player.name,
       isSeeded: Boolean(player.isSeeded),
     });
+
+    const phase2GroupName = player.phase2Group?.trim();
+    if (phase2GroupName) {
+      if (!phase2Groups[phase2GroupName]) phase2Groups[phase2GroupName] = [];
+      phase2Groups[phase2GroupName].push({
+        id: player.id,
+        name: player.name,
+        sourceGroup: player.poolGroup?.trim() || null,
+      });
+    }
   }
 
   const groupedMatches = matches.map((match) => ({
@@ -113,10 +127,43 @@ export async function getTournamentState() {
     time: match.time || '',
   }));
 
+  const groupedPhase2Matches = phase2Matches.map((match) => ({
+    id: match.id,
+    groupName: match.groupName || 'Unknown',
+    round: match.round,
+    roundNumber: match.roundNumber,
+    player1Id: match.player1Id,
+    player2Id: match.player2Id,
+    status: match.status,
+    scheduledAt: match.scheduledAt ? match.scheduledAt.toISOString() : null,
+    venue: match.venue || null,
+    tableNumber: match.tableNumber ?? null,
+    date: match.date,
+    time: match.time || '',
+  }));
+
+  const groupedKnockoutMatches = knockoutMatches.map((match) => ({
+    id: match.id,
+    groupName: match.groupName || '',
+    round: match.round,
+    roundNumber: match.roundNumber,
+    player1Id: match.player1Id,
+    player2Id: match.player2Id,
+    status: match.status,
+    scheduledAt: match.scheduledAt ? match.scheduledAt.toISOString() : null,
+    venue: match.venue || null,
+    tableNumber: match.tableNumber ?? null,
+    date: match.date,
+    time: match.time || '',
+  }));
+
   return {
     players,
     groups,
+    phase2Groups,
     matches: groupedMatches,
+    phase2Matches: groupedPhase2Matches,
+    knockoutMatches: groupedKnockoutMatches,
   };
 }
 

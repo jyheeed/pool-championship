@@ -9,6 +9,7 @@ export interface Player {
   club?: string;
   photoUrl?: string;
   isSeeded?: boolean;
+  phase2Group?: string;
   wins: number;
   losses: number;
   played: number;
@@ -27,7 +28,7 @@ export interface Match {
   date: string;
   time?: string;
   venue?: string;
-  phase?: 'group' | 'knockout';
+  phase?: 'group' | 'group2' | 'knockout';
   groupName?: string;
   roundNumber?: number;
   scheduledAt?: string;

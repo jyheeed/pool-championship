@@ -29,10 +29,17 @@ export default function FixturesPage() {
   const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE);
   const [fixtures, setFixtures] = useState<Match[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
+  const [selectedPhase, setSelectedPhase] = useState<'group' | 'group2' | 'knockout'>('group');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const t = getTranslations(language);
+
+  function firstGroupForPhase(phase: 'group' | 'group2' | 'knockout'): string | null {
+    const phaseMatches = fixtures.filter((match) => (match.phase || 'group') === phase);
+    const groups = Array.from(new Set(phaseMatches.map((match) => (match.groupName || 'Unassigned').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    return groups[0] || null;
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -52,16 +59,16 @@ export default function FixturesPage() {
         const standingsRes = await fetch('/api/public/standings');
         const standingsData = await standingsRes.json();
 
-        let groupMatches: Match[] = [];
+        let tournamentMatches: Match[] = [];
 
         if (matchesData.success) {
-          groupMatches = (matchesData.data || []).filter((match: Match) => {
+          tournamentMatches = (matchesData.data || []).filter((match: Match) => {
             const groupName = (match.groupName || '').trim();
-            return match.phase === 'group' || groupName.length > 0;
+            return match.phase === 'group' || match.phase === 'group2' || match.phase === 'knockout' || groupName.length > 0;
           });
         }
 
-        if (groupMatches.length === 0 && standingsData.success) {
+        if (tournamentMatches.length === 0 && standingsData.success) {
           const standings: Standing[] = standingsData.data || [];
           const hasGroups = standings.some((standing) => Boolean(standing.player.poolGroup?.trim()));
 
@@ -77,18 +84,25 @@ export default function FixturesPage() {
               const refreshedRes = await fetch('/api/public/matches');
               const refreshedData = await refreshedRes.json();
               if (refreshedData.success) {
-                groupMatches = (refreshedData.data || []).filter((match: Match) => {
+                tournamentMatches = (refreshedData.data || []).filter((match: Match) => {
                   const groupName = (match.groupName || '').trim();
-                  return match.phase === 'group' || groupName.length > 0;
+                  return match.phase === 'group' || match.phase === 'group2' || match.phase === 'knockout' || groupName.length > 0;
                 });
               }
             }
           }
         }
 
-        setFixtures(groupMatches);
+        setFixtures(tournamentMatches);
 
-        const groups = Array.from(new Set(groupMatches.map((m: Match) => m.groupName).filter(Boolean)));
+        const groups = Array.from(
+          new Set(
+            tournamentMatches
+              .filter((m: Match) => (m.phase || 'group') === 'group')
+              .map((m: Match) => m.groupName)
+              .filter(Boolean)
+          )
+        );
         if (groups.length > 0) {
           setSelectedGroup(groups[0] as string);
         }
@@ -110,7 +124,36 @@ export default function FixturesPage() {
     return <div className="panel p-12 text-center text-white/60">Loading fixtures...</div>;
   }
 
-  const groupedByGroup = fixtures.reduce<Record<string, Record<string, Match[]>>>((acc, match) => {
+  const phaseLabels = {
+    fr: {
+      group: 'Phase 1',
+      group2: 'Phase 2',
+      knockout: 'Finale',
+      section: 'Phase',
+      noPhaseData: 'Aucun match pour cette phase.',
+    },
+    en: {
+      group: 'Phase 1',
+      group2: 'Phase 2',
+      knockout: 'Final',
+      section: 'Phase',
+      noPhaseData: 'No matches for this phase.',
+    },
+    ar: {
+      group: 'المرحلة 1',
+      group2: 'المرحلة 2',
+      knockout: 'النهائي',
+      section: 'المرحلة',
+      noPhaseData: 'لا توجد مباريات لهذه المرحلة.',
+    },
+  }[language];
+
+  const filteredFixtures = fixtures.filter((match) => {
+    const matchPhase = match.phase || 'group';
+    return matchPhase === selectedPhase;
+  });
+
+  const groupedByGroup = filteredFixtures.reduce<Record<string, Record<string, Match[]>>>((acc, match) => {
     const groupName = (match.groupName || 'Unassigned').trim();
     const roundKey = String(match.roundNumber || 0).padStart(2, '0');
 
@@ -124,9 +167,9 @@ export default function FixturesPage() {
   const groups = Object.keys(groupedByGroup).sort((a, b) => a.localeCompare(b));
   const selectedGroupMatches = selectedGroup ? groupedByGroup[selectedGroup] || {} : {};
 
-  const scheduledCount = fixtures.filter((m) => m.status === 'scheduled').length;
-  const liveCount = fixtures.filter((m) => m.status === 'live').length;
-  const postponedCount = fixtures.filter((m) => m.status === 'postponed').length;
+  const scheduledCount = filteredFixtures.filter((m) => m.status === 'scheduled').length;
+  const liveCount = filteredFixtures.filter((m) => m.status === 'live').length;
+  const postponedCount = filteredFixtures.filter((m) => m.status === 'postponed').length;
 
   const upcomingEvents: FixtureEvent[] = (settings?.fixtureEvents && settings.fixtureEvents.length > 0)
     ? settings.fixtureEvents
@@ -204,8 +247,33 @@ export default function FixturesPage() {
         </div>
       </section>
 
+      <section className="space-y-3">
+        <div className="flex items-center gap-3">
+          <CalendarDays size={18} className="text-[var(--accent-blue)]" />
+          <h2 className="text-2xl font-semibold">{phaseLabels.section}</h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(['group', 'group2', 'knockout'] as const).map((phase) => (
+            <button
+              key={phase}
+              onClick={() => {
+                setSelectedPhase(phase);
+                setSelectedGroup(firstGroupForPhase(phase));
+              }}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                selectedPhase === phase
+                  ? 'bg-[var(--accent-gold)] text-black'
+                  : 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
+              }`}
+            >
+              {phaseLabels[phase]}
+            </button>
+          ))}
+        </div>
+      </section>
+
       {groups.length === 0 ? (
-        <div className="panel p-12 text-center text-white/60">{t.fixtures.noUpcomingFixtures}</div>
+        <div className="panel p-12 text-center text-white/60">{phaseLabels.noPhaseData}</div>
       ) : (
         <>
           <section className="space-y-4">
