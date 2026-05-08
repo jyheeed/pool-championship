@@ -12,12 +12,16 @@ const groupAffiliations = [
   { label: 'Break Hub', groups: ['Group R', 'Group G', 'Group Q', 'Group M', 'Group E', 'Group D', 'Groupe R', 'Groupe G', 'Groupe Q', 'Groupe M', 'Groupe E', 'Groupe D'] },
 ] as const;
 
-const phase2GroupAffiliations = [
-  { label: "Friend Zone", groups: ['Group F'] },
-  { label: "Break'hub", groups: ['Group N', 'Group E', 'Group G'] },
-  { label: 'Grand 8', groups: ['Group C', 'Group A'] },
-  { label: 'Emperor', groups: ['Group D', 'Group B'] },
-] as const;
+const phase2GroupLabels: Record<string, string> = {
+  'Group F': 'Friend Zone',
+  'Group N': "Break'hub",
+  'Group E': "Break'hub",
+  'Group G': "Break'hub",
+  'Group C': 'Grand 8',
+  'Group A': 'Grand 8',
+  'Group D': 'Emperor',
+  'Group B': 'Emperor',
+};
 
 const groupOrder: string[] = groupAffiliations.flatMap((entry) => entry.groups);
 
@@ -50,11 +54,6 @@ type TournamentState = {
 function getGroupAffiliation(groupName: string) {
   const normalizedGroupName = groupName.trim().toLowerCase();
   return groupAffiliations.find((entry) => entry.groups.some((group) => group.toLowerCase() === normalizedGroupName));
-}
-
-function getPhase2GroupAffiliation(groupName: string) {
-  const normalizedGroupName = groupName.trim().toLowerCase();
-  return phase2GroupAffiliations.find((entry) => entry.groups.some((group) => group.toLowerCase() === normalizedGroupName));
 }
 
 function sortPhase1Groups(left: string, right: string) {
@@ -220,14 +219,6 @@ export default function DrawPage() {
 
   const selectedGroupPlayers = selectedGroup ? activeGroups[selectedGroup] || [] : [];
 
-  function formatGroupTitle(group: string): string {
-    if (selectedPhase === 'group') {
-      return getGroupAffiliation(group)?.label ? `${getGroupAffiliation(group)?.label} : ${group}` : group;
-    }
-    const affiliation = getPhase2GroupAffiliation(group);
-    return affiliation?.label ? `${affiliation.label} : ${group}` : group;
-  }
-
   return (
     <div className="space-y-8 animate-in">
       <section className="pool-hero px-6 py-7 md:px-8 md:py-8">
@@ -318,7 +309,9 @@ export default function DrawPage() {
                       : 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
                   }`}
                 >
-                  {selectedPhase === 'group2' ? formatGroupTitle(group) : group}
+                  {selectedPhase === 'group2'
+                    ? `${phase2GroupLabels[group] || group} : ${group}`
+                    : group}
                 </button>
               ))}
             </div>
@@ -329,7 +322,11 @@ export default function DrawPage() {
               <div className="flex items-center justify-between border-b border-white/8 px-5 py-4 md:px-6">
                 <div>
                   <p className="section-kicker text-[var(--accent-gold)]">{selectedPhase === 'group' ? t.draw.pool : 'Phase 2 Group'}</p>
-                  <h2 className="mt-1 text-2xl font-display md:text-3xl">{formatGroupTitle(selectedGroup)}</h2>
+                  <h2 className="mt-1 text-2xl font-display md:text-3xl">
+                    {selectedPhase === 'group'
+                      ? (getGroupAffiliation(selectedGroup)?.label ? `${getGroupAffiliation(selectedGroup)?.label} : ${selectedGroup}` : selectedGroup)
+                      : `${phase2GroupLabels[selectedGroup] || selectedGroup} : ${selectedGroup}`}
+                  </h2>
                 </div>
                 <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-white/60">
                   {selectedPhase === 'group' ? t.draw.playersInGroup(selectedGroupPlayers.length) : `${selectedGroupPlayers.length}/5 players`}
