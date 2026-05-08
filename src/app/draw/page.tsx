@@ -29,6 +29,15 @@ type Standing = {
 type TournamentState = {
   groups: Record<string, Array<{ id: string; name: string; isSeeded: boolean }>>;
   phase2Groups: Record<string, Array<{ id: string; name: string; sourceGroup: string | null }>>;
+  phase2Matches?: Array<{
+    id: string;
+    groupName?: string;
+    player1Id: string;
+    player2Id: string;
+    score1?: number | null;
+    score2?: number | null;
+    status: string;
+  }>;
 };
 
 function getGroupAffiliation(groupName: string) {
@@ -52,6 +61,7 @@ export default function DrawPage() {
   const [tournamentState, setTournamentState] = useState<TournamentState | null>(null);
   const [selectedPhase, setSelectedPhase] = useState<'group' | 'group2'>('group');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [phase2Standings, setPhase2Standings] = useState<Record<string, Record<string, { id: string; name: string; points: number; wins: number; losses: number }>>>({});
 
   const t = getTranslations(language);
 
@@ -76,10 +86,60 @@ export default function DrawPage() {
         }
 
         if (stateData.success) {
-          setTournamentState({
+          const state: TournamentState = {
             groups: stateData.data?.groups || {},
             phase2Groups: stateData.data?.phase2Groups || {},
-          });
+            phase2Matches: stateData.data?.phase2Matches || [],
+          };
+          setTournamentState(state);
+
+          // Calculate Phase 2 standings from matches
+          const phase2Matches = state.phase2Matches || [];
+          const phase2Groups = state.phase2Groups || {};
+          const standings: Record<string, Record<string, { id: string; name: string; points: number; wins: number; losses: number }>> = {};
+
+          for (const [groupName, players] of Object.entries(phase2Groups)) {
+            const groupStandings: Record<string, { id: string; name: string; points: number; wins: number; losses: number }> = {};
+            
+            // Initialize standings
+            for (const player of players) {
+              groupStandings[player.id] = {
+                id: player.id,
+                name: player.name,
+                points: 0,
+                wins: 0,
+                losses: 0,
+              };
+            }
+
+            // Calculate from matches
+            const groupMatches = phase2Matches.filter(
+              (m) => m.groupName?.trim() === groupName && m.status === 'completed'
+            );
+
+            for (const match of groupMatches) {
+              const p1 = groupStandings[match.player1Id];
+              const p2 = groupStandings[match.player2Id];
+              if (!p1 || !p2) continue;
+
+              const score1 = match.score1 ?? 0;
+              const score2 = match.score2 ?? 0;
+
+              if (score1 > score2) {
+                p1.points += 3;
+                p1.wins += 1;
+                p2.losses += 1;
+              } else if (score2 > score1) {
+                p2.points += 3;
+                p2.wins += 1;
+                p1.losses += 1;
+              }
+            }
+
+            standings[groupName] = groupStandings;
+          }
+
+          setPhase2Standings(standings);
         }
       } catch (error) {
         console.error('Failed to load tournament data:', error);
@@ -284,6 +344,24 @@ export default function DrawPage() {
                           </div>
                         </div>
                       ))
+                  : selectedGroup && phase2Standings[selectedGroup]
+                  ? Object.values(phase2Standings[selectedGroup])
+                      .slice()
+                      .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
+                      .map((player) => (
+                        <div key={player.id} className="flex items-center justify-between gap-4 px-5 py-4 md:px-6">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-base font-semibold text-white md:text-lg">{player.name}</span>
+                            </div>
+                            <p className="mt-1 truncate text-xs text-white/55 md:text-sm">{player.wins}W - {player.losses}L</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-mono text-xl font-bold text-[var(--accent-gold)] md:text-2xl">{player.points}</p>
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-white/42">{t.draw.points}</p>
+                          </div>
+                        </div>
+                      ))
                   : (selectedGroupPlayers as Array<{ id: string; name: string; sourceGroup: string | null }>)
                       .map((player) => (
                         <div key={player.id} className="flex items-center justify-between gap-4 px-5 py-4 md:px-6">
@@ -294,7 +372,7 @@ export default function DrawPage() {
                             <p className="mt-1 truncate text-xs text-white/55 md:text-sm">{player.sourceGroup || 'Unassigned'}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-mono text-xl font-bold text-[var(--accent-gold)] md:text-2xl">5</p>
+                            <p className="font-mono text-xl font-bold text-[var(--accent-gold)] md:text-2xl">{selectedGroupPlayers.length || 0}</p>
                             <p className="text-[10px] uppercase tracking-[0.22em] text-white/42">players</p>
                           </div>
                         </div>
