@@ -70,6 +70,22 @@ function defaultGroupNames(groupCount: number): string[] {
   });
 }
 
+const phase2GroupAffiliations = [
+  { label: 'Friend Zone', groups: ['Group F'] },
+  { label: "Break'hub", groups: ['Group N', 'Group E', 'Group G'] },
+  { label: 'Grand Huit', groups: ['Group C', 'Group A'] },
+  { label: 'Emperor', groups: ['Group D', 'Group B'] },
+] as const;
+
+function getPhase2GroupLabel(groupName: string): string {
+  const normalized = groupName.trim().toLowerCase();
+  const affiliation = phase2GroupAffiliations.find((entry) =>
+    entry.groups.some((group) => group.toLowerCase() === normalized)
+  );
+
+  return affiliation ? `${affiliation.label} : ${groupName}` : groupName;
+}
+
 function toLocalDateTimeValue(iso: string | null): string {
   if (!iso) return '';
   const date = new Date(iso);
@@ -609,7 +625,7 @@ export default function TournamentAdminPage() {
             {Object.entries(state?.phase2Groups || {}).sort(([a], [b]) => a.localeCompare(b)).map(([groupName, groupPlayers]) => (
               <div key={groupName} className="rounded-xl border border-white/10 p-4">
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="font-semibold">{groupName}</h3>
+                  <h3 className="font-semibold">{getPhase2GroupLabel(groupName)}</h3>
                   <span className="text-xs text-white/50">{groupPlayers.length}/5</span>
                 </div>
                 <ul className="space-y-1 text-sm">
@@ -666,7 +682,7 @@ export default function TournamentAdminPage() {
                   })
                   .map((match) => (
                     <tr key={match.id} className="border-b border-white/5">
-                      <td className="px-2 py-2">{match.groupName}</td>
+                      <td className="px-2 py-2">{getPhase2GroupLabel(match.groupName)}</td>
                       <td className="px-2 py-2">{match.roundNumber || '-'}</td>
                       <td className="px-2 py-2">
                         {playerNameById.get(match.player1Id) || match.player1Id} vs {playerNameById.get(match.player2Id) || match.player2Id}
