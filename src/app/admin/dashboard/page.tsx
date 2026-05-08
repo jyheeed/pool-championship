@@ -112,6 +112,26 @@ interface ResetSnapshotSummary {
   createdAt: string;
 }
 
+interface Phase2GroupPlayer {
+  id: string;
+  name: string;
+  sourceGroup: string | null;
+}
+
+interface Phase2MatchSummary {
+  id: string;
+  groupName: string;
+  round: string;
+  roundNumber?: number;
+  player1Id: string;
+  player2Id: string;
+  status: string;
+  date: string;
+  time: string;
+  venue: string | null;
+  tableNumber: number | null;
+}
+
 const DEFAULT_GROUP_NAMES = Array.from({ length: 20 }, (_, index) => `Group ${String.fromCharCode(65 + index)}`).join(', ');
 
 type PublicPlayerData = {
@@ -166,7 +186,7 @@ const emptyClub: ClubForm = { id: '', name: '', city: '', logo_url: '' };
 export default function AdminDashboard() {
   const router = useRouter();
   const [language, setLanguage] = useState<Language>('fr');
-  const [tab, setTab] = useState<'players' | 'matches' | 'clubs' | 'registrations' | 'settings'>('players');
+  const [tab, setTab] = useState<'players' | 'matches' | 'clubs' | 'registrations' | 'settings' | 'phase2'>('players');
   const [players, setPlayers] = useState<PlayerForm[]>([]);
   const [matches, setMatches] = useState<MatchForm[]>([]);
   const [clubs, setClubs] = useState<ClubForm[]>([]);
@@ -188,6 +208,8 @@ export default function AdminDashboard() {
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set());
   const [resetSnapshots, setResetSnapshots] = useState<ResetSnapshotSummary[]>([]);
+  const [phase2Groups, setPhase2Groups] = useState<Record<string, Phase2GroupPlayer[]>>({});
+  const [phase2Matches, setPhase2Matches] = useState<Phase2MatchSummary[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -292,6 +314,13 @@ export default function AdminDashboard() {
           heroSubtitle: sData.data.heroSubtitle || '',
           venuesText,
         });
+      }
+
+      const stateRes = await fetch('/api/admin/tournament/state');
+      const stateData = await stateRes.json();
+      if (stateData.success) {
+        setPhase2Groups(stateData.data?.phase2Groups || {});
+        setPhase2Matches(stateData.data?.phase2Matches || []);
       }
 
       if (resetHistoryData.success) {
@@ -514,6 +543,50 @@ export default function AdminDashboard() {
     flash(d.success ? tx(language, 'Tirage terminé !', 'Draw complete!', 'اكتمل السحب!') : d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
     if (d.success) await load();
     setLoading(false);
+  }
+
+  async function runPhase2Draw() {
+    if (!confirm(tx(language, 'Générer le tirage Phase 2 avec les 2 premiers de chaque groupe Phase 1. Continuer ?', 'Generate Phase 2 draw using top 2 from each Phase 1 group. Continue?', 'توليد سحب المرحلة 2 باستخدام أفضل 2 من كل مجموعة المرحلة 1. هل تريد المتابعة؟'))) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/tournament/phase-2/draw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const d = await res.json();
+      if (d.success) {
+        flash(tx(language, `Tirage Phase 2 généré: ${d.data?.totalQualified || 0} joueurs en ${d.data?.totalGroups || 0} groupes`, `Phase 2 draw generated: ${d.data?.totalQualified || 0} players in ${d.data?.totalGroups || 0} groups`, `تم توليد سحب المرحلة 2: ${d.data?.totalQualified || 0} لاعب في ${d.data?.totalGroups || 0} مجموعات`));
+        await load();
+      } else {
+        flash(d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+      }
+    } catch {
+      flash(tx(language, 'Erreur réseau', 'Network error', 'خطأ الشبكة'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runPhase2MatchGeneration() {
+    if (!confirm(tx(language, 'Générer les matches Phase 2 (round-robin dans chaque groupe). Continuer ?', 'Generate Phase 2 matches (round-robin in each group). Continue?', 'توليد مباريات المرحلة 2 (دوري في كل مجموعة). هل تريد المتابعة؟'))) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/tournament/phase-2/group-matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const d = await res.json();
+      if (d.success) {
+        flash(tx(language, `${d.data?.count || 0} matches Phase 2 générés`, `${d.data?.count || 0} Phase 2 matches generated`, `تم توليد ${d.data?.count || 0} مباراة المرحلة 2`));
+        await load();
+      } else {
+        flash(d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+      }
+    } catch {
+      flash(tx(language, 'Erreur réseau', 'Network error', 'خطأ الشبكة'));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function resetTournamentWithArchive() {
@@ -844,7 +917,7 @@ export default function AdminDashboard() {
     setTab('clubs');
   }
 
-  function resetForms(nextTab: 'players' | 'matches' | 'clubs' | 'registrations' | 'settings') {
+  function resetForms(nextTab: 'players' | 'matches' | 'clubs' | 'registrations' | 'settings' | 'phase2') {
     setTab(nextTab);
     setEditing(null);
     setPlayerForm(emptyPlayer);
@@ -951,6 +1024,7 @@ export default function AdminDashboard() {
           { key: 'players' as const, label: tx(language, 'Joueurs', 'Players', 'اللاعبون'), icon: Users },
           { key: 'registrations' as const, label: `${tx(language, 'Inscriptions', 'Registrations', 'التسجيلات')} ${pendingRegistrations.length > 0 ? `(${pendingRegistrations.length})` : ''}`, icon: UserCheck },
           { key: 'matches' as const, label: tx(language, 'Matchs', 'Matches', 'المباريات'), icon: Swords },
+          { key: 'phase2' as const, label: tx(language, 'Phase 2', 'Phase 2', 'المرحلة 2'), icon: Shuffle },
           { key: 'clubs' as const, label: tx(language, 'Clubs', 'Clubs', 'الأندية'), icon: Building2 },
           { key: 'settings' as const, label: tx(language, 'Paramètres', 'Settings', 'الإعدادات'), icon: Settings },
         ].map(({ key, label, icon: Icon }) => (
@@ -1387,6 +1461,75 @@ export default function AdminDashboard() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {tab === 'phase2' && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-display text-lg">{tx(language, 'Tirage Phase 2', 'Phase 2 Draw', 'سحب المرحلة 2')}</h2>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                  {tx(language, 'Générez un second tirage avec les 2 premiers de chaque groupe Phase 1, puis produisez les nouveaux groupes Phase 2.', 'Generate a second draw using the top 2 from each Phase 1 group, then build the new Phase 2 groups.', 'أنشئ سحبًا ثانيًا باستخدام أفضل لاعبين اثنين من كل مجموعة في المرحلة 1، ثم أنشئ مجموعات المرحلة 2 الجديدة.')}
+                </p>
+              </div>
+              <div className="rounded-lg border border-[rgba(255,194,71,0.18)] bg-[rgba(255,194,71,0.08)] px-3 py-2 text-xs text-[var(--accent-gold)]">
+                {Object.keys(phase2Groups).length} {tx(language, 'groupes', 'groups', 'مجموعات')}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={runPhase2Draw}
+                disabled={loading || players.length === 0}
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-blue)] px-4 py-2 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
+              >
+                <Shuffle size={14} /> {tx(language, 'Générer tirage Phase 2', 'Generate Phase 2 Draw', 'توليد سحب المرحلة 2')}
+              </button>
+              <button
+                onClick={runPhase2MatchGeneration}
+                disabled={loading || Object.keys(phase2Groups).length === 0}
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-green)] px-4 py-2 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
+              >
+                <Swords size={14} /> {tx(language, 'Générer matches Phase 2', 'Generate Phase 2 Matches', 'توليد مباريات المرحلة 2')}
+              </button>
+            </div>
+          </div>
+
+          {Object.keys(phase2Groups).length === 0 ? (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-center text-[var(--text-muted)]">
+              {tx(language, 'Aucun groupe Phase 2 généré pour le moment. Lancez le tirage d\'abord.', 'No Phase 2 groups generated yet. Run the draw first.', 'لم يتم توليد أي مجموعات المرحلة 2 حتى الآن. قم بتشغيل السحب أولاً.')}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+                <h3 className="mb-4 font-display text-lg">{tx(language, 'Groupes Phase 2', 'Phase 2 Groups', 'مجموعات المرحلة 2')}</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {Object.entries(phase2Groups).map(([groupName, groupPlayers]) => (
+                    <div key={groupName} className="rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-4">
+                      <h4 className="mb-2 font-semibold">{groupName}</h4>
+                      <ul className="space-y-1 text-sm text-[var(--text-secondary)]">
+                        {(groupPlayers as Array<{ id: string; name: string; sourceGroup?: string }>).map((player) => (
+                          <li key={player.id} className="flex items-center justify-between gap-3">
+                            <span>{player.name}</span>
+                            <span className="text-xs text-[var(--text-muted)]">{player.sourceGroup || '—'}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+                <h3 className="mb-4 font-display text-lg">{tx(language, 'Matches Phase 2', 'Phase 2 Matches', 'مباريات المرحلة 2')}</h3>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  {tx(language, `Total: ${phase2Matches.length} matches générés`, `Total: ${phase2Matches.length} matches generated`, `الإجمالي: ${phase2Matches.length} مباراة تم توليدها`)}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
