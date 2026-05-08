@@ -318,7 +318,7 @@ export default function DrawPage() {
                       : 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
                   }`}
                 >
-                  {group}
+                  {selectedPhase === 'group2' ? formatGroupTitle(group) : group}
                 </button>
               ))}
             </div>
