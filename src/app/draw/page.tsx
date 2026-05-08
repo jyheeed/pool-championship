@@ -12,6 +12,13 @@ const groupAffiliations = [
   { label: 'Break Hub', groups: ['Group R', 'Group G', 'Group Q', 'Group M', 'Group E', 'Group D', 'Groupe R', 'Groupe G', 'Groupe Q', 'Groupe M', 'Groupe E', 'Groupe D'] },
 ] as const;
 
+const phase2GroupAffiliations = [
+  { label: "Friend Zone", groups: ['Group F'] },
+  { label: "Break'hub", groups: ['Group N', 'Group E', 'Group G'] },
+  { label: 'Grand Huit', groups: ['Group C', 'Group A'] },
+  { label: 'Emperor', groups: ['Group D', 'Group B'] },
+] as const;
+
 const groupOrder: string[] = groupAffiliations.flatMap((entry) => entry.groups);
 
 type Standing = {
@@ -43,6 +50,11 @@ type TournamentState = {
 function getGroupAffiliation(groupName: string) {
   const normalizedGroupName = groupName.trim().toLowerCase();
   return groupAffiliations.find((entry) => entry.groups.some((group) => group.toLowerCase() === normalizedGroupName));
+}
+
+function getPhase2GroupAffiliation(groupName: string) {
+  const normalizedGroupName = groupName.trim().toLowerCase();
+  return phase2GroupAffiliations.find((entry) => entry.groups.some((group) => group.toLowerCase() === normalizedGroupName));
 }
 
 function sortPhase1Groups(left: string, right: string) {
@@ -212,7 +224,8 @@ export default function DrawPage() {
     if (selectedPhase === 'group') {
       return getGroupAffiliation(group)?.label ? `${getGroupAffiliation(group)?.label} : ${group}` : group;
     }
-    return group;
+    const affiliation = getPhase2GroupAffiliation(group);
+    return affiliation?.label ? `${affiliation.label} : ${group}` : group;
   }
 
   return (
