@@ -1474,8 +1474,13 @@ export default function AdminDashboard() {
                   {tx(language, 'Générez un second tirage avec les 2 premiers de chaque groupe Phase 1, puis produisez les nouveaux groupes Phase 2.', 'Generate a second draw using the top 2 from each Phase 1 group, then build the new Phase 2 groups.', 'أنشئ سحبًا ثانيًا باستخدام أفضل لاعبين اثنين من كل مجموعة في المرحلة 1، ثم أنشئ مجموعات المرحلة 2 الجديدة.')}
                 </p>
               </div>
-              <div className="rounded-lg border border-[rgba(255,194,71,0.18)] bg-[rgba(255,194,71,0.08)] px-3 py-2 text-xs text-[var(--accent-gold)]">
-                {Object.keys(phase2Groups).length} {tx(language, 'groupes', 'groups', 'مجموعات')}
+              <div className="grid gap-2 text-right">
+                <div className="rounded-lg border border-[rgba(255,194,71,0.18)] bg-[rgba(255,194,71,0.08)] px-3 py-2 text-xs text-[var(--accent-gold)]">
+                  {Object.keys(phase2Groups).length} {tx(language, 'groupes', 'groups', 'مجموعات')}
+                </div>
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 text-xs text-[var(--text-muted)]">
+                  {phase2Matches.length} {tx(language, 'matchs générés', 'generated matches', 'مباريات مولدة')}
+                </div>
               </div>
             </div>
 
@@ -1507,13 +1512,21 @@ export default function AdminDashboard() {
                 <h3 className="mb-4 font-display text-lg">{tx(language, 'Groupes Phase 2', 'Phase 2 Groups', 'مجموعات المرحلة 2')}</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   {Object.entries(phase2Groups).map(([groupName, groupPlayers]) => (
-                    <div key={groupName} className="rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-4">
-                      <h4 className="mb-2 font-semibold">{groupName}</h4>
-                      <ul className="space-y-1 text-sm text-[var(--text-secondary)]">
+                    <div key={groupName} className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <h4 className="font-semibold">{groupName}</h4>
+                          <p className="text-xs text-[var(--text-muted)]">{tx(language, 'Nouveau groupe Phase 2', 'New Phase 2 group', 'مجموعة جديدة في المرحلة 2')}</p>
+                        </div>
+                        <span className="rounded-full border border-[rgba(255,194,71,0.18)] bg-[rgba(255,194,71,0.08)] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[var(--accent-gold)]">
+                          {(groupPlayers as Array<Phase2GroupPlayer>).length} {tx(language, 'joueurs', 'players', 'لاعبين')}
+                        </span>
+                      </div>
+                      <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
                         {(groupPlayers as Array<{ id: string; name: string; sourceGroup?: string }>).map((player) => (
-                          <li key={player.id} className="flex items-center justify-between gap-3">
-                            <span>{player.name}</span>
-                            <span className="text-xs text-[var(--text-muted)]">{player.sourceGroup || '—'}</span>
+                          <li key={player.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/3 px-3 py-2">
+                            <span className="font-medium text-[var(--text-primary)]">{player.name}</span>
+                            <span className="rounded-full bg-black/20 px-2 py-0.5 text-[10px] text-[var(--text-muted)]">{player.sourceGroup || '—'}</span>
                           </li>
                         ))}
                       </ul>
@@ -1524,9 +1537,20 @@ export default function AdminDashboard() {
 
               <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
                 <h3 className="mb-4 font-display text-lg">{tx(language, 'Matches Phase 2', 'Phase 2 Matches', 'مباريات المرحلة 2')}</h3>
-                <p className="text-sm text-[var(--text-secondary)]">
-                  {tx(language, `Total: ${phase2Matches.length} matches générés`, `Total: ${phase2Matches.length} matches generated`, `الإجمالي: ${phase2Matches.length} مباراة تم توليدها`)}
-                </p>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">{tx(language, 'Total', 'Total', 'الإجمالي')}</p>
+                    <p className="mt-2 font-mono text-2xl font-semibold text-[var(--accent-gold)]">{phase2Matches.length}</p>
+                  </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">{tx(language, 'Groupes actifs', 'Active groups', 'المجموعات النشطة')}</p>
+                    <p className="mt-2 font-mono text-2xl font-semibold text-[var(--accent-blue)]">{Object.keys(phase2Groups).length}</p>
+                  </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">{tx(language, 'Format', 'Format', 'النمط')}</p>
+                    <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">Round-robin</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
