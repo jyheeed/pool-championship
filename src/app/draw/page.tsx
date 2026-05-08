@@ -15,7 +15,7 @@ const groupAffiliations = [
 const phase2GroupAffiliations = [
   { label: "Friend Zone", groups: ['Group F'] },
   { label: "Break'hub", groups: ['Group N', 'Group E', 'Group G'] },
-  { label: 'Grand Huit', groups: ['Group C', 'Group A'] },
+  { label: 'Grand 8', groups: ['Group C', 'Group A'] },
   { label: 'Emperor', groups: ['Group D', 'Group B'] },
 ] as const;
 
