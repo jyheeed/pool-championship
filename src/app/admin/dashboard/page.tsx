@@ -589,6 +589,28 @@ export default function AdminDashboard() {
     }
   }
 
+  async function resetPhase2Draw() {
+    if (!confirm(tx(language, 'Réinitialiser Phase 2 ? Le tirage et les matches Phase 2 seront supprimés (Phase 1 restera intact). Continuer ?', 'Reset Phase 2? The Phase 2 draw and matches will be deleted (Phase 1 will remain intact). Continue?', 'إعادة ضبط المرحلة 2؟ سيتم حذف السحب والمباريات من المرحلة 2 (ستبقى المرحلة 1 سليمة). هل تريد المتابعة؟'))) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/tournament/reset/phase2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const d = await res.json();
+      if (d.success) {
+        flash(tx(language, `Phase 2 réinitialisée: ${d.data?.matchesDeleted || 0} matches supprimés`, `Phase 2 reset: ${d.data?.matchesDeleted || 0} matches deleted`, `تم إعادة تعيين المرحلة 2: تم حذف ${d.data?.matchesDeleted || 0} مباراة`));
+        await load();
+      } else {
+        flash(d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+      }
+    } catch {
+      flash(tx(language, 'Erreur réseau', 'Network error', 'خطأ الشبكة'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function resetTournamentWithArchive() {
     const firstConfirm = confirm(
       tx(
@@ -1498,6 +1520,13 @@ export default function AdminDashboard() {
                 className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-green)] px-4 py-2 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
               >
                 <Swords size={14} /> {tx(language, 'Générer matches Phase 2', 'Generate Phase 2 Matches', 'توليد مباريات المرحلة 2')}
+              </button>
+              <button
+                onClick={resetPhase2Draw}
+                disabled={loading || Object.keys(phase2Groups).length === 0}
+                className="flex items-center gap-1.5 rounded-lg bg-red-600/80 px-4 py-2 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
+              >
+                <Trash2 size={14} /> {tx(language, 'Réinitialiser Phase 2', 'Reset Phase 2', 'إعادة تعيين المرحلة 2')}
               </button>
             </div>
           </div>
