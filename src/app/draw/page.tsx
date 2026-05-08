@@ -12,17 +12,6 @@ const groupAffiliations = [
   { label: 'Break Hub', groups: ['Group R', 'Group G', 'Group Q', 'Group M', 'Group E', 'Group D', 'Groupe R', 'Groupe G', 'Groupe Q', 'Groupe M', 'Groupe E', 'Groupe D'] },
 ] as const;
 
-const phase2GroupLabels: Record<string, string> = {
-  'Group F': 'Friend Zone',
-  'Group N': "Break'hub",
-  'Group E': "Break'hub",
-  'Group G': "Break'hub",
-  'Group C': 'Grand 8',
-  'Group A': 'Grand 8',
-  'Group D': 'Emperor',
-  'Group B': 'Emperor',
-};
-
 const groupOrder: string[] = groupAffiliations.flatMap((entry) => entry.groups);
 
 type Standing = {
@@ -309,9 +298,19 @@ export default function DrawPage() {
                       : 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
                   }`}
                 >
-                  {selectedPhase === 'group2'
-                    ? `${phase2GroupLabels[group] || group} : ${group}`
-                    : group}
+                  {selectedPhase === 'group2' ? (
+                    group.replace(/^Phase 2 - /, '') === 'Group F' ? 'Friend Zone : Group F' :
+                    group.replace(/^Phase 2 - /, '') === 'Group N' ? "Break'hub : Group N" :
+                    group.replace(/^Phase 2 - /, '') === 'Group E' ? "Break'hub : Group E" :
+                    group.replace(/^Phase 2 - /, '') === 'Group G' ? "Break'hub : Group G" :
+                    group.replace(/^Phase 2 - /, '') === 'Group C' ? 'Grand 8 : Group C' :
+                    group.replace(/^Phase 2 - /, '') === 'Group A' ? 'Grand 8 : Group A' :
+                    group.replace(/^Phase 2 - /, '') === 'Group D' ? 'Emperor : Group D' :
+                    group.replace(/^Phase 2 - /, '') === 'Group B' ? 'Emperor : Group B' :
+                    group.replace(/^Phase 2 - /, '')
+                  ) : (
+                    group
+                  )}
                 </button>
               ))}
             </div>
@@ -323,9 +322,19 @@ export default function DrawPage() {
                 <div>
                   <p className="section-kicker text-[var(--accent-gold)]">{selectedPhase === 'group' ? t.draw.pool : 'Phase 2 Group'}</p>
                   <h2 className="mt-1 text-2xl font-display md:text-3xl">
-                    {selectedPhase === 'group'
-                      ? (getGroupAffiliation(selectedGroup)?.label ? `${getGroupAffiliation(selectedGroup)?.label} : ${selectedGroup}` : selectedGroup)
-                      : `${phase2GroupLabels[selectedGroup] || selectedGroup} : ${selectedGroup}`}
+                    {selectedPhase === 'group' ? (
+                      getGroupAffiliation(selectedGroup)?.label ? `${getGroupAffiliation(selectedGroup)?.label} : ${selectedGroup}` : selectedGroup
+                    ) : (
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group F' ? 'Friend Zone : Group F' :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group N' ? "Break'hub : Group N" :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group E' ? "Break'hub : Group E" :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group G' ? "Break'hub : Group G" :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group C' ? 'Grand 8 : Group C' :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group A' ? 'Grand 8 : Group A' :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group D' ? 'Emperor : Group D' :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group B' ? 'Emperor : Group B' :
+                      selectedGroup?.replace(/^Phase 2 - /, '')
+                    )}
                   </h2>
                 </div>
                 <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-white/60">
