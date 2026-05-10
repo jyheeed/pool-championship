@@ -589,6 +589,29 @@ export default function AdminDashboard() {
     }
   }
 
+  async function runFinalDraw() {
+    if (!confirm(tx(language, 'Générer le bracket final à partir des qualifiés de Phase 2. Continuer ?', 'Generate the final bracket from Phase 2 qualifiers. Continue?', 'توليد bracket النهائي من المتأهلين في المرحلة 2. هل تريد المتابعة؟'))) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/tournament/final/draw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replaceExisting: true }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        flash(tx(language, `Bracket final généré: ${d.data?.count || 0} matchs`, `Final bracket generated: ${d.data?.count || 0} matches`, `تم توليد bracket النهائي: ${d.data?.count || 0} مباراة`));
+        await load();
+      } else {
+        flash(d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+      }
+    } catch {
+      flash(tx(language, 'Erreur réseau', 'Network error', 'خطأ الشبكة'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function resetPhase2Draw() {
     if (!confirm(tx(language, 'Réinitialiser Phase 2 ? Le tirage et les matches Phase 2 seront supprimés (Phase 1 restera intact). Continuer ?', 'Reset Phase 2? The Phase 2 draw and matches will be deleted (Phase 1 will remain intact). Continue?', 'إعادة ضبط المرحلة 2؟ سيتم حذف السحب والمباريات من المرحلة 2 (ستبقى المرحلة 1 سليمة). هل تريد المتابعة؟'))) return;
     setLoading(true);
@@ -1520,6 +1543,13 @@ export default function AdminDashboard() {
                 className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-green)] px-4 py-2 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
               >
                 <Swords size={14} /> {tx(language, 'Générer matches Phase 2', 'Generate Phase 2 Matches', 'توليد مباريات المرحلة 2')}
+              </button>
+              <button
+                onClick={runFinalDraw}
+                disabled={loading || Object.keys(phase2Groups).length === 0}
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-gold)] px-4 py-2 text-sm font-bold text-black transition-all hover:brightness-110 disabled:opacity-40"
+              >
+                <Swords size={14} /> {tx(language, 'Générer tirage final', 'Generate Final Bracket', 'توليد bracket النهائي')}
               </button>
               <button
                 onClick={resetPhase2Draw}
