@@ -132,6 +132,14 @@ interface Phase2MatchSummary {
   tableNumber: number | null;
 }
 
+interface KnockoutMatchSummary {
+  id: string;
+  round: string;
+  status: string;
+  player1Id: string;
+  player2Id: string;
+}
+
 const DEFAULT_GROUP_NAMES = Array.from({ length: 20 }, (_, index) => `Group ${String.fromCharCode(65 + index)}`).join(', ');
 
 type PublicPlayerData = {
@@ -210,6 +218,7 @@ export default function AdminDashboard() {
   const [resetSnapshots, setResetSnapshots] = useState<ResetSnapshotSummary[]>([]);
   const [phase2Groups, setPhase2Groups] = useState<Record<string, Phase2GroupPlayer[]>>({});
   const [phase2Matches, setPhase2Matches] = useState<Phase2MatchSummary[]>([]);
+  const [knockoutMatches, setKnockoutMatches] = useState<KnockoutMatchSummary[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -321,6 +330,7 @@ export default function AdminDashboard() {
       if (stateData.success) {
         setPhase2Groups(stateData.data?.phase2Groups || {});
         setPhase2Matches(stateData.data?.phase2Matches || []);
+        setKnockoutMatches(stateData.data?.knockoutMatches || []);
       }
 
       if (resetHistoryData.success) {
@@ -601,6 +611,28 @@ export default function AdminDashboard() {
       const d = await res.json();
       if (d.success) {
         flash(tx(language, `Bracket final généré: ${d.data?.count || 0} matchs`, `Final bracket generated: ${d.data?.count || 0} matches`, `تم توليد bracket النهائي: ${d.data?.count || 0} مباراة`));
+        await load();
+      } else {
+        flash(d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+      }
+    } catch {
+      flash(tx(language, 'Erreur réseau', 'Network error', 'خطأ الشبكة'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resetFinalDraw() {
+    if (!confirm(tx(language, 'Réinitialiser le bracket final ? Les matchs de phase finale seront supprimés pour pouvoir regénérer le tirage. Continuer ?', 'Reset the final bracket? Final phase matches will be deleted so you can regenerate the draw. Continue?', 'إعادة تعيين bracket النهائي؟ سيتم حذف مباريات المرحلة النهائية حتى تتمكن من إعادة توليد السحب. هل تريد المتابعة؟'))) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/tournament/reset/final', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const d = await res.json();
+      if (d.success) {
+        flash(tx(language, `Bracket final réinitialisé: ${d.data?.matchesDeleted || 0} matchs supprimés`, `Final bracket reset: ${d.data?.matchesDeleted || 0} matches deleted`, `تمت إعادة تعيين bracket النهائي: تم حذف ${d.data?.matchesDeleted || 0} مباراة`));
         await load();
       } else {
         flash(d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
@@ -1550,6 +1582,13 @@ export default function AdminDashboard() {
                 className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-gold)] px-4 py-2 text-sm font-bold text-black transition-all hover:brightness-110 disabled:opacity-40"
               >
                 <Swords size={14} /> {tx(language, 'Générer tirage final', 'Generate Final Bracket', 'توليد bracket النهائي')}
+              </button>
+              <button
+                onClick={resetFinalDraw}
+                disabled={loading || knockoutMatches.length === 0}
+                className="flex items-center gap-1.5 rounded-lg border border-[rgba(255,255,255,0.14)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-bold text-[var(--text-primary)] transition-all hover:brightness-110 disabled:opacity-40"
+              >
+                <RefreshCw size={14} /> {tx(language, 'Réinitialiser tirage final', 'Reset Final Bracket', 'إعادة تعيين bracket النهائي')}
               </button>
               <button
                 onClick={resetPhase2Draw}
