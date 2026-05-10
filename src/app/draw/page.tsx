@@ -299,16 +299,16 @@ export default function DrawPage() {
                   }`}
                 >
                   {selectedPhase === 'group2' ? (
-                    group.replace(/^Phase 2 - /, '') === 'Group F' ? 'Friend Zone : Group F' :
-                    group.replace(/^Phase 2 - /, '') === 'Group N' ? "Break'hub : Group N" :
-                    group.replace(/^Phase 2 - /, '') === 'Group E' ? "Break'hub : Group E" :
-                    group.replace(/^Phase 2 - /, '') === 'Group G' ? "Break'hub : Group G" :
-                    group.replace(/^Phase 2 - /, '') === 'Group C' ? 'Grand 8 : Group C' :
-                    group.replace(/^Phase 2 - /, '') === 'Group A' ? 'Grand 8 : Group A' :
-                    group.replace(/^Phase 2 - /, '') === 'Group D' ? 'Emperor : Group D' :
-                    group.replace(/^Phase 2 - /, '') === 'Group B' ? 'Emperor : Group B' :
+                    group.replace(/^Phase 2 - /, '') === 'Group F' ? 'Friend Zone (T1-T2) : Group F' :
+                    group.replace(/^Phase 2 - /, '') === 'Group H' ? "Break'hub (T3-T4): Group H" :
+                    group.replace(/^Phase 2 - /, '') === 'Group E' ? "Break'hub (T1-T2) : Group E" :
+                    group.replace(/^Phase 2 - /, '') === 'Group G' ? "Break'hub (T5-T6) : Group G" :
+                    group.replace(/^Phase 2 - /, '') === 'Group C' ? 'Grand 8 (T3-T4) : Group C' :
+                    group.replace(/^Phase 2 - /, '') === 'Group A' ? 'Grand 8 (T1-T2) : Group A' :
+                    group.replace(/^Phase 2 - /, '') === 'Group D' ? 'Emperor (T3-T4): Group D' :
+                    group.replace(/^Phase 2 - /, '') === 'Group B' ? 'Emperor (T1-T2) : Group B' :
                     group.replace(/^Phase 2 - /, '')
-                  ) : (
+                  ) : ( 
                     group
                   )}
                 </button>
@@ -325,14 +325,14 @@ export default function DrawPage() {
                     {selectedPhase === 'group' ? (
                       getGroupAffiliation(selectedGroup)?.label ? `${getGroupAffiliation(selectedGroup)?.label} : ${selectedGroup}` : selectedGroup
                     ) : (
-                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group F' ? 'Friend Zone : Group F' :
-                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group N' ? "Break'hub : Group N" :
-                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group E' ? "Break'hub : Group E" :
-                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group G' ? "Break'hub : Group G" :
-                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group C' ? 'Grand 8 : Group C' :
-                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group A' ? 'Grand 8 : Group A' :
-                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group D' ? 'Emperor : Group D' :
-                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group B' ? 'Emperor : Group B' :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group F' ? 'Friend Zone (T1-T2) : Group F' :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group H' ? "Break'hub (T3-T4): Group H" :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group E' ? "Break'hub (T1-T2) : Group E" :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group G' ? "Break'hub (T5-T6) : Group G" :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group C' ? 'Grand 8 (T3-T4) : Group C' :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group A' ? 'Grand 8 (T1-T2) : Group A' :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group D' ? 'Emperor (T3-T4): Group D' :
+                      selectedGroup?.replace(/^Phase 2 - /, '') === 'Group B' ? 'Emperor (T1-T2) : Group B' :
                       selectedGroup?.replace(/^Phase 2 - /, '')
                     )}
                   </h2>

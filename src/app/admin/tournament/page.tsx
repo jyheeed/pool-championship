@@ -180,6 +180,29 @@ export default function TournamentAdminPage() {
       }
       setManualDateTimes(dateTimes);
       setManualVenues(nextVenues);
+
+      const phase2Matches = nextState.phase2Matches || [];
+      const completedPhase2Matches = phase2Matches.filter((match) => match.status === 'completed').length;
+      const totalPhase2Matches = phase2Matches.length;
+      const knockoutMatches = nextState.knockoutMatches || [];
+
+      if (totalPhase2Matches > 0 && completedPhase2Matches === totalPhase2Matches && knockoutMatches.length === 0) {
+        const finalRes = await fetch('/api/admin/tournament/final/draw', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ replaceExisting: false }),
+        });
+        const finalData = await finalRes.json();
+
+        if (finalData.success) {
+          const refreshedStateRes = await fetch('/api/admin/tournament/state');
+          const refreshedStateData = await refreshedStateRes.json();
+
+          if (refreshedStateData.success) {
+            setState(refreshedStateData.data as TournamentState);
+          }
+        }
+      }
     }
   }, [applyGroupCount]);
 
