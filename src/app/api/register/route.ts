@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       city: body.city,
       cin: body.cin || '',
       club: body.club || '',
-      photo_url: body.photoUrl || '',
+      // photo removed
       status: 'pending',
       created_at: new Date().toISOString(),
     };

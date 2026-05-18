@@ -11,7 +11,6 @@ export interface IRegistration extends Document {
   city: string;
   cin?: string;
   club?: string;
-  photoUrl?: string;
   status: 'pending' | 'approved' | 'rejected';
   approvedAt?: Date;
 }
@@ -27,7 +26,6 @@ const RegistrationSchema: Schema = new Schema({
   city: { type: String, required: true },
   cin: { type: String },
   club: { type: String },
-  photoUrl: { type: String },
   status: { 
     type: String, 
     enum: ['pending', 'approved', 'rejected'], 

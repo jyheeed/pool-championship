@@ -17,7 +17,6 @@ export const playerRowSchema = z.object({
   nationality: optionalText(80),
   age: z.union([z.string(), z.number()]).optional(),
   club: optionalText(120),
-  photo_url: z.string().trim().max(200000, 'Photo is too large').optional(),
   pool_group: optionalText(32),
   is_seeded: z.union([z.literal('true'), z.literal('false')]).optional(),
 });
@@ -108,7 +107,6 @@ export const registerSchema = z.object({
   city: requiredText('City', 120),
   cin: optionalText(40),
   club: optionalText(120),
-  photoUrl: z.string().trim().max(200000, 'Photo is too large').optional(),
 }).superRefine((value, context) => {
   if (value.age >= 18 && !value.cin?.trim()) {
     context.addIssue({

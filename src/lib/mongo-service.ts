@@ -34,7 +34,6 @@ type DbPlayer = {
   nationality?: string;
   age?: number;
   club?: string;
-  photoUrl?: string;
   poolGroup?: string;
   poolVenue?: string;
   isSeeded?: boolean;
@@ -79,7 +78,6 @@ type DbRegistration = {
   city: string;
   cin?: string;
   club?: string;
-  photoUrl?: string;
   status: Registration['status'];
   createdAt?: Date;
   approvedAt?: Date;
@@ -161,7 +159,6 @@ export async function getPlayers(): Promise<Player[]> {
       nationality: pr.nationality || 'Tunisia',
       age: pr.age || undefined,
       club: pr.club || undefined,
-      photoUrl: pr.photoUrl || undefined,
       poolGroup: pr.poolGroup || undefined,
       poolVenue: pr.poolVenue || undefined,
       isSeeded: Boolean(pr.isSeeded),
@@ -200,7 +197,6 @@ export async function addPlayer(player: PlayerRow): Promise<void> {
     nationality: player.nationality || 'Tunisia',
     age: player.age ? parseInt(player.age, 10) : undefined,
     club: player.club,
-    photoUrl: player.photo_url,
     poolGroup,
     poolVenue: undefined,
     isSeeded,
@@ -224,7 +220,6 @@ export async function updatePlayer(id: string, player: PlayerRow): Promise<void>
     nationality: player.nationality || 'Tunisia',
     age: player.age ? parseInt(player.age, 10) : undefined,
     club: player.club,
-    photoUrl: player.photo_url,
     poolGroup,
     isSeeded,
   });
@@ -385,7 +380,6 @@ export async function getRegistrations(): Promise<Registration[]> {
       city: rr.city,
       cin: rr.cin || undefined,
       club: rr.club || undefined,
-      photoUrl: rr.photoUrl || undefined,
       status: rr.status as Registration['status'],
       createdAt: rr.createdAt ? rr.createdAt.toISOString() : new Date().toISOString(),
       approvedAt: rr.approvedAt ? rr.approvedAt.toISOString() : undefined,
@@ -409,7 +403,6 @@ export async function addRegistration(reg: RegistrationRow): Promise<void> {
     city: reg.city,
     cin: reg.cin,
     club: reg.club,
-    photoUrl: reg.photo_url,
     status: 'pending',
   });
 }
@@ -440,7 +433,6 @@ export async function updateRegistrationStatus(id: string, status: 'approved' | 
           nationality: reg.nationality || 'Tunisia',
           age: reg.age?.toString() || '',
           club: reg.club || '',
-          photo_url: reg.photoUrl || '',
           pool_group: '',
           is_seeded: 'false',
         });

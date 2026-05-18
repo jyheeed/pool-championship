@@ -1,8 +1,7 @@
 'use client';
 
-import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { AlertCircle, CheckCircle2, UserPlus } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 
@@ -166,7 +165,6 @@ const emptyForm = {
   city: '',
   cin: '',
   club: '',
-  photoUrl: '',
 };
 
 const compactInputClass =
@@ -175,12 +173,10 @@ const compactInputClass =
 export default function RegistrationForm({ language }: { language: Language }) {
   const copy = TEXT[language];
   const [form, setForm] = useState(emptyForm);
-  const [photoName, setPhotoName] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const needsCin = Number(form.age) >= 18;
 
@@ -215,61 +211,6 @@ export default function RegistrationForm({ language }: { language: Language }) {
     });
   };
 
-  const handlePhotoUpload = async (file: File | null) => {
-    if (!file) {
-      setForm((current) => ({ ...current, photoUrl: '' }));
-      setPhotoName('');
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      setError(copy.hints.errorImageType);
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError(copy.hints.errorImageSize);
-      return;
-    }
-
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const source = String(reader.result || '');
-          const image = new window.Image();
-          image.onload = () => {
-            const maxDimension = 1024;
-            const scale = Math.min(maxDimension / image.width, maxDimension / image.height, 1);
-            const width = Math.max(1, Math.round(image.width * scale));
-            const height = Math.max(1, Math.round(image.height * scale));
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const context = canvas.getContext('2d');
-
-            if (!context) {
-              resolve(source);
-              return;
-            }
-
-            context.drawImage(image, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.82));
-          };
-          image.onerror = () => resolve(source);
-          image.src = source;
-        } catch {
-          reject(new Error(copy.hints.errorUpload));
-        }
-      };
-      reader.onerror = () => reject(new Error(copy.hints.errorRead));
-      reader.readAsDataURL(file);
-    });
-
-    setForm((current) => ({ ...current, photoUrl: dataUrl }));
-    setPhotoName(file.name);
-    setError('');
-  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -344,7 +285,6 @@ export default function RegistrationForm({ language }: { language: Language }) {
               onClick={() => {
                 setForm(emptyForm);
                 setSuccess(false);
-                setPhotoName('');
               }}
               className="rounded-xl border border-[#d8dbe0] bg-white px-5 py-3 text-sm font-semibold text-[#334155] transition hover:bg-[#f1f5f9]"
             >
@@ -476,55 +416,6 @@ export default function RegistrationForm({ language }: { language: Language }) {
                 onChange={(e) => setForm({ ...form, club: e.target.value })}
                 placeholder={copy.placeholders.club}
               />
-            </Field>
-
-            <Field label={copy.labels.photo}>
-              <div className="space-y-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    void handlePhotoUpload(e.target.files?.[0] || null);
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-[#d6dbe2] bg-white px-4 text-sm font-semibold text-[#334155] transition hover:bg-[#f1f5f9]"
-                >
-                  {photoName ? copy.placeholders.replacePhoto : copy.placeholders.photoButton}
-                </button>
-                <p className="text-[11px] text-[#6b7280]">
-                  {copy.hints.photo}
-                </p>
-                {photoName && (
-                  <div className="flex items-center gap-3 rounded-lg border border-[#d6dbe2] bg-white p-2">
-                    <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-md bg-[#f1f5f9] text-[11px] text-[#64748b]">
-                      {form.photoUrl ? (
-                        <Image src={form.photoUrl} alt={copy.placeholders.preview} fill className="object-cover" unoptimized />
-                      ) : (
-                        copy.placeholders.preview
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-[#1f2937]">{photoName}</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm((current) => ({ ...current, photoUrl: '' }));
-                          setPhotoName('');
-                          if (fileInputRef.current) fileInputRef.current.value = '';
-                        }}
-                        className="mt-1 text-xs font-semibold text-[#0f6bff] hover:underline"
-                      >
-                        {copy.placeholders.remove}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </Field>
           </div>
 

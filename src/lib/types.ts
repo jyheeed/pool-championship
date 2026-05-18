@@ -105,7 +105,6 @@ export interface Registration {
   city: string;
   cin?: string;
   club?: string;
-  photoUrl?: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   approvedAt?: string;
@@ -125,7 +124,7 @@ export interface RegistrationRow {
   city: string;
   cin: string;
   club: string;
-  photo_url: string;
+  // photo_url removed
   status: string;
   created_at: string;
 }
@@ -138,7 +137,7 @@ export interface PlayerRow {
   nationality: string;
   age: string;
   club: string;
-  photo_url: string;
+  // photo_url removed
   pool_group: string;
   is_seeded: string;
 }

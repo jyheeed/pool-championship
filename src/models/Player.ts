@@ -7,7 +7,6 @@ export interface IPlayer extends Document {
   nationality: string;
   age?: number;
   club?: string;
-  photoUrl?: string;
   poolGroup?: string;
   phase2Group?: string;
   poolVenue?: string;
@@ -21,7 +20,6 @@ const PlayerSchema: Schema = new Schema({
   nationality: { type: String, default: 'Tunisia' },
   age: { type: Number },
   club: { type: String },
-  photoUrl: { type: String },
   poolGroup: { type: String },
   phase2Group: { type: String },
   poolVenue: { type: String },

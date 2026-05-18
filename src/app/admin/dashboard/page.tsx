@@ -28,7 +28,6 @@ interface PlayerForm {
   nationality: string;
   age: string;
   club: string;
-  photo_url: string;
   pool_group: string;
   is_seeded: string;
 }
@@ -177,7 +176,7 @@ type PublicClubData = {
   logoUrl?: string;
 };
 
-const emptyPlayer: PlayerForm = { id: '', name: '', nickname: '', nationality: '', age: '', club: '', photo_url: '', pool_group: '', is_seeded: 'false' };
+const emptyPlayer: PlayerForm = { id: '', name: '', nickname: '', nationality: '', age: '', club: '', pool_group: '', is_seeded: 'false' };
 const emptyMatch: MatchForm = { id: '', round: '', date: '', time: '', venue: '', player1_id: '', player2_id: '', score1: '', score2: '', status: 'scheduled', frame_scores: '', notes: '', discipline: '' };
 const emptySettings: SettingsForm = {
   name: '',
@@ -246,7 +245,6 @@ export default function AdminDashboard() {
             nationality: p.nationality || '',
             age: p.age?.toString() || '',
             club: p.club || '',
-            photo_url: p.photoUrl || '',
             pool_group: p.poolGroup || '',
             is_seeded: p.isSeeded ? 'true' : 'false',
           }))
@@ -1155,9 +1153,8 @@ export default function AdminDashboard() {
                 ['age', tx(language, 'Âge', 'Age', 'العمر'), 'number', false],
                 ['club', tx(language, 'Club', 'Club', 'النادي'), 'text', false],
                 ['pool_group', tx(language, 'Groupe', 'Group', 'المجموعة'), 'text', false],
-                ['photo_url', tx(language, 'URL photo', 'Photo URL', 'رابط الصورة'), 'text', false],
               ] as const).map(([key, label, type, disabled]) => (
-                <div key={key} className={key === 'photo_url' ? 'md:col-span-2' : ''}>
+                <div key={key}>
                   <label className="mb-1 block text-xs font-mono uppercase text-[var(--text-muted)]">{label}</label>
                   <input
                     type={type}
