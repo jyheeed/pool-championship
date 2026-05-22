@@ -4,6 +4,7 @@ import MatchModel from '@/models/Match';
 import { getSettings } from '@/lib/mongo-service';
 import { buildPoolVenueAssignments, generateBalancedGroupDraw } from '@/lib/tournament/draw-engine';
 import { generateGroupRoundRobin } from '@/lib/tournament/round-robin-engine';
+import { phase1GroupOrder } from '@/lib/group-labels';
 import { generateSchedule } from '@/lib/tournament/schedule-engine';
 
 type DrawInput = {
@@ -274,7 +275,19 @@ export async function generateGroupMatches(replaceExisting = true) {
   const { date, time } = formatDateParts(now);
   const documents: Array<Record<string, unknown>> = [];
 
-  for (const [groupName, playerIds] of Array.from(groups.entries())) {
+  // Order groups according to configured phase1GroupOrder, falling back to alphabetical
+  const orderedGroupNames = Array.from(groups.keys()).sort((left, right) => {
+    const leftIndex = phase1GroupOrder.indexOf(left);
+    const rightIndex = phase1GroupOrder.indexOf(right);
+
+    if (leftIndex === -1 && rightIndex === -1) return left.localeCompare(right);
+    if (leftIndex === -1) return 1;
+    if (rightIndex === -1) return -1;
+    return leftIndex - rightIndex;
+  });
+
+  for (const groupName of orderedGroupNames) {
+    const playerIds = groups.get(groupName) || [];
     const roundRobin = generateGroupRoundRobin({ groupName, playerIds });
     const groupVenue = players.find((player) => player.poolGroup?.trim() === groupName)?.poolVenue?.trim();
 
