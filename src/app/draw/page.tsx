@@ -1,21 +1,9 @@
-'use client';
+"use client";
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, type Language } from '@/lib/i18n';
-
-const phase1GroupTitles: Record<string, string> = {
-  'group e': 'Grand huit 1',
-  'group g': "break'hub 3",
-  'group a': 'Emperor 1',
-  'group f': "break'hub 2",
-  'group c': 'Grand huit 2',
-  'group d': "break'hub 1",
-  'group b': 'FriendZone',
-} as const;
-
-const groupOrder: string[] = ['Group C', 'Group A', 'Group F', 'Group H', 'Group B', 'Group G', 'Group E', 'Group D'];
-
+import { getPhase1Label, phase1GroupOrder } from '@/lib/group-labels';
 type Standing = {
   player: {
     id: string;
@@ -43,15 +31,13 @@ type TournamentState = {
 };
 
 function getGroupAffiliation(groupName: string) {
-  const normalizedGroupName = groupName.trim().toLowerCase();
-  const label = phase1GroupTitles[normalizedGroupName];
-
+  const label = getPhase1Label(groupName || '');
   return label ? { label } : undefined;
 }
 
 function sortPhase1Groups(left: string, right: string) {
-  const leftIndex = groupOrder.indexOf(left);
-  const rightIndex = groupOrder.indexOf(right);
+  const leftIndex = phase1GroupOrder.indexOf(left);
+  const rightIndex = phase1GroupOrder.indexOf(right);
 
   if (leftIndex === -1 && rightIndex === -1) return left.localeCompare(right);
   if (leftIndex === -1) return 1;

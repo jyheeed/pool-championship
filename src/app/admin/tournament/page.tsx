@@ -77,13 +77,10 @@ const phase2GroupAffiliations = [
   { label: 'Emperor', groups: ['Group D', 'Group B'] },
 ] as const;
 
-function getPhase2GroupLabel(groupName: string): string {
-  const normalized = groupName.trim().toLowerCase();
-  const affiliation = phase2GroupAffiliations.find((entry) =>
-    entry.groups.some((group) => group.toLowerCase() === normalized)
-  );
+import { getPhase2Label } from '@/lib/group-labels';
 
-  return affiliation ? `${affiliation.label} : ${groupName}` : groupName;
+function getPhase2GroupLabel(groupName: string): string {
+  return getPhase2Label(groupName);
 }
 
 function toLocalDateTimeValue(iso: string | null): string {
