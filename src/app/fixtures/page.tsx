@@ -209,8 +209,9 @@ export default function FixturesPage() {
   const liveCount = filteredFixtures.filter((m) => m.status === 'live').length;
   const postponedCount = filteredFixtures.filter((m) => m.status === 'postponed').length;
 
-  const upcomingEvents: FixtureEvent[] = (settings?.fixtureEvents && settings.fixtureEvents.length > 0)
-    ? settings.fixtureEvents
+  const configuredFixtureEvents = settings?.fixtureEvents ?? [];
+  const upcomingEvents: FixtureEvent[] = configuredFixtureEvents.length > 0
+    ? configuredFixtureEvents
     : [{
         id: 'group-stage',
         title: t.fixtures.eventOneTitle,
