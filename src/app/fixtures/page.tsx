@@ -2,6 +2,7 @@
 
 import { CalendarDays } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Match, Standing, TournamentSettings } from '@/lib/types';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus, type Language } from '@/lib/i18n';
 import { getPhase1Label, phase1GroupOrder } from '@/lib/group-labels';
@@ -27,6 +28,7 @@ function formatDateOnly(dateStr: string): string {
 }
 
 export default function FixturesPage() {
+  const router = useRouter();
   const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE);
   const [fixtures, setFixtures] = useState<Match[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
@@ -35,6 +37,12 @@ export default function FixturesPage() {
   const [loading, setLoading] = useState(true);
 
   const t = getTranslations(language);
+
+  useEffect(() => {
+    router.replace('/');
+  }, [router]);
+
+  return null;
 
   function firstGroupForPhase(phase: 'group' | 'group2' | 'knockout'): string | null {
     const phaseMatches = fixtures.filter((match) => (match.phase || 'group') === phase);
