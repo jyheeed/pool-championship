@@ -199,7 +199,8 @@ export default function FixturesPage() {
     if (rightIndex === -1) return -1;
     return leftIndex - rightIndex;
   });
-  const selectedGroupMatches = selectedGroup ? groupedByGroup[selectedGroup] || {} : {};
+  const selectedGroupKey = selectedGroup || '';
+  const selectedGroupMatches = selectedGroupKey ? groupedByGroup[selectedGroupKey] || {} : {};
   const displayGroupLabel = (groupName: string) => {
     const label = getPhase1Label(groupName);
     return selectedPhase === 'group' && label ? `${label} : ${groupName}` : groupName;
@@ -342,7 +343,7 @@ export default function FixturesPage() {
               <div className="fixtures-round-title flex items-center gap-3">
                 <CalendarDays size={18} className="text-[var(--accent-blue)]" />
                 <h2 className="text-2xl font-semibold">
-                  {displayGroupLabel(selectedGroup)} <span className="text-base font-normal text-white/55">({totalGroupMatches} matches)</span>
+                  {displayGroupLabel(selectedGroupKey)} <span className="text-base font-normal text-white/55">({totalGroupMatches} matches)</span>
                 </h2>
               </div>
 
