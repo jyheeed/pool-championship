@@ -4,6 +4,7 @@ import { ClipboardList } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Match } from '@/lib/types';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, type Language } from '@/lib/i18n';
+import { getPhase1Label, phase1GroupOrder } from '@/lib/group-labels';
 
 export default function ResultsPage() {
   const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE);
@@ -36,7 +37,14 @@ export default function ResultsPage() {
         setResults(completedMatches);
         // Get first group of Phase 1
         const phaseMatches = completedMatches.filter((match) => (match.phase || 'group') === 'group');
-        const groups = Array.from(new Set(phaseMatches.map((match) => (match.groupName || 'Unassigned').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+        const groups = Array.from(new Set(phaseMatches.map((match) => (match.groupName || 'Unassigned').trim()).filter(Boolean))).sort((a, b) => {
+          const leftIndex = phase1GroupOrder.indexOf(a);
+          const rightIndex = phase1GroupOrder.indexOf(b);
+          if (leftIndex === -1 && rightIndex === -1) return a.localeCompare(b);
+          if (leftIndex === -1) return 1;
+          if (rightIndex === -1) return -1;
+          return leftIndex - rightIndex;
+        });
         setSelectedGroup(groups[0] || null);
       } catch (error) {
         console.error('Failed to load results:', error);
@@ -77,7 +85,16 @@ export default function ResultsPage() {
 
   function firstGroupForPhase(phase: 'group' | 'group2' | 'knockout'): string | null {
     const phaseMatches = results.filter((match) => (match.phase || 'group') === phase);
-    const groups = Array.from(new Set(phaseMatches.map((match) => (match.groupName || 'Unassigned').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    const groups = Array.from(new Set(phaseMatches.map((match) => (match.groupName || 'Unassigned').trim()).filter(Boolean))).sort((a, b) => {
+      if (phase !== 'group') return a.localeCompare(b);
+
+      const leftIndex = phase1GroupOrder.indexOf(a);
+      const rightIndex = phase1GroupOrder.indexOf(b);
+      if (leftIndex === -1 && rightIndex === -1) return a.localeCompare(b);
+      if (leftIndex === -1) return 1;
+      if (rightIndex === -1) return -1;
+      return leftIndex - rightIndex;
+    });
     return groups[0] || null;
   }
 
@@ -101,8 +118,21 @@ export default function ResultsPage() {
     return acc;
   }, {});
 
-  const groups = Object.keys(groupedByGroup).sort((a, b) => a.localeCompare(b));
+  const groups = Object.keys(groupedByGroup).sort((a, b) => {
+    if (selectedPhase !== 'group') return a.localeCompare(b);
+
+    const leftIndex = phase1GroupOrder.indexOf(a);
+    const rightIndex = phase1GroupOrder.indexOf(b);
+    if (leftIndex === -1 && rightIndex === -1) return a.localeCompare(b);
+    if (leftIndex === -1) return 1;
+    if (rightIndex === -1) return -1;
+    return leftIndex - rightIndex;
+  });
   const selectedGroupMatches = selectedGroup ? groupedByGroup[selectedGroup] || {} : {};
+  const displayGroupLabel = (groupName: string) => {
+    const label = getPhase1Label(groupName);
+    return selectedPhase === 'group' && label ? `${label} : ${groupName}` : groupName;
+  };
 
   const phase1Count = results.filter((m) => (m.phase || 'group') === 'group' && m.status === 'completed').length;
   const phase2Count = results.filter((m) => m.phase === 'group2' && m.status === 'completed').length;
@@ -183,7 +213,7 @@ export default function ResultsPage() {
                       : 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
                   }`}
                 >
-                  {group}
+                  {displayGroupLabel(group)}
                 </button>
               ))}
             </div>
@@ -193,7 +223,7 @@ export default function ResultsPage() {
             <section className="space-y-4">
               <div className="flex items-center gap-3">
                 <ClipboardList size={18} className="text-[var(--accent-amber)]" />
-                <h2 className="text-2xl font-semibold">{selectedGroup}</h2>
+                <h2 className="text-2xl font-semibold">{displayGroupLabel(selectedGroup)}</h2>
                 <span className="rounded-full border border-white/12 bg-white/5 px-3 py-1 text-xs text-white/60">
                   {Object.values(selectedGroupMatches).reduce((sum, list) => sum + list.length, 0)} résultats
                 </span>
