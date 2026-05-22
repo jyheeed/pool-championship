@@ -212,15 +212,13 @@ export default function FixturesPage() {
 
   const upcomingEvents: FixtureEvent[] = (settings?.fixtureEvents && settings.fixtureEvents.length > 0)
     ? settings.fixtureEvents
-    : [
-        {
-          id: 'group-stage',
-          title: t.fixtures.eventOneTitle,
-          date: t.fixtures.eventOneDate,
-          note: t.fixtures.eventOneNote,
-          venue: settings?.venues?.[0] || undefined,
-        },
-      ];
+    : [{
+        id: 'group-stage',
+        title: t.fixtures.eventOneTitle,
+        date: t.fixtures.eventOneDate,
+        note: t.fixtures.eventOneNote,
+        venue: settings?.venues?.[0] || undefined,
+      }];
 
   const isFr = language === 'fr';
   const totalGroupMatches = selectedGroup
