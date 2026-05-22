@@ -32,9 +32,11 @@ export function getPhase2Label(groupName: string): string {
   return affiliation ? `${affiliation.label} : ${groupName}` : groupName;
 }
 
-export default {
+const groupLabels = {
   phase1GroupTitles,
   phase1GroupOrder,
   getPhase1Label,
   getPhase2Label,
 };
+
+export default groupLabels;

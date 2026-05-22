@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getPhase2Label } from '@/lib/group-labels';
 
 type PlayerRow = {
   id: string;
@@ -69,15 +70,6 @@ function defaultGroupNames(groupCount: number): string[] {
     return `Group ${index + 1}`;
   });
 }
-
-const phase2GroupAffiliations = [
-  { label: 'Friend Zone', groups: ['Group F'] },
-  { label: "Break'hub", groups: ['Group N', 'Group E', 'Group G'] },
-  { label: 'Grand Huit', groups: ['Group C', 'Group A'] },
-  { label: 'Emperor', groups: ['Group D', 'Group B'] },
-] as const;
-
-import { getPhase2Label } from '@/lib/group-labels';
 
 function getPhase2GroupLabel(groupName: string): string {
   return getPhase2Label(groupName);
