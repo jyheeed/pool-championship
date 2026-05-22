@@ -4,7 +4,7 @@ import MatchModel from '@/models/Match';
 import { getSettings } from '@/lib/mongo-service';
 import { buildPoolVenueAssignments, generateBalancedGroupDraw } from '@/lib/tournament/draw-engine';
 import { generateGroupRoundRobin } from '@/lib/tournament/round-robin-engine';
-import { phase1GroupOrder } from '@/lib/group-labels';
+import { getPhase1DisplayTitle, phase1GroupOrder } from '@/lib/group-labels';
 import { generateSchedule } from '@/lib/tournament/schedule-engine';
 
 type DrawInput = {
@@ -294,7 +294,7 @@ export async function generateGroupMatches(replaceExisting = true) {
     roundRobin.matches.forEach((pair, index) => {
       documents.push({
         id: `grp-${groupName.replace(/\s+/g, '-').toLowerCase()}-r${pair.roundNumber}-m${index + 1}`,
-        round: `${groupName} - Round ${pair.roundNumber}`,
+        round: `${getPhase1DisplayTitle(groupName)} - Round ${pair.roundNumber}`,
         phase: 'group',
         groupName,
         roundNumber: pair.roundNumber,

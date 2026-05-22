@@ -16,6 +16,11 @@ export function getPhase1Label(groupName: string): string | undefined {
   return phase1GroupTitles[normalized];
 }
 
+export function getPhase1DisplayTitle(groupName: string): string {
+  const label = getPhase1Label(groupName);
+  return label ? `${label} : ${groupName}` : groupName;
+}
+
 const phase2GroupAffiliations = [
   { label: "Friend Zone", groups: ['Group F'] },
   { label: "Break'hub", groups: ['Group N', 'Group E', 'Group G'] },
@@ -36,6 +41,7 @@ const groupLabels = {
   phase1GroupTitles,
   phase1GroupOrder,
   getPhase1Label,
+  getPhase1DisplayTitle,
   getPhase2Label,
 };
 

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Match, Standing, TournamentSettings } from '@/lib/types';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, translateStatus, type Language } from '@/lib/i18n';
-import { getPhase1Label, phase1GroupOrder } from '@/lib/group-labels';
+import { getPhase1DisplayTitle, phase1GroupOrder } from '@/lib/group-labels';
 
 type FixtureEvent = {
   id: string;
@@ -202,8 +202,7 @@ export default function FixturesPage() {
   const selectedGroupKey = selectedGroup || '';
   const selectedGroupMatches = selectedGroupKey ? groupedByGroup[selectedGroupKey] || {} : {};
   const displayGroupLabel = (groupName: string) => {
-    const label = getPhase1Label(groupName);
-    return selectedPhase === 'group' && label ? `${label} : ${groupName}` : groupName;
+    return selectedPhase === 'group' ? getPhase1DisplayTitle(groupName) : groupName;
   };
 
   const scheduledCount = filteredFixtures.filter((m) => m.status === 'scheduled').length;
