@@ -4,15 +4,17 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, getTranslations, normalizeLanguage, type Language } from '@/lib/i18n';
 
-const groupAffiliations = [
-  { label: 'Royal Class', groups: ['Group C', 'Group O', 'Group A', 'Group L', 'Groupe C', 'Groupe O', 'Groupe A', 'Groupe L'] },
-  { label: 'Grand 8', groups: ['Group J', 'Group T', 'Group S', 'Group F', 'Groupe J', 'Groupe T', 'Groupe S', 'Groupe F'] },
-  { label: 'Emperor', groups: ['Group P', 'Group H', 'Group B', 'Group I', 'Groupe P', 'Groupe H', 'Groupe B', 'Groupe I'] },
-  { label: 'Friend Zone', groups: ['Group N', 'Group K', 'Groupe N', 'Groupe K'] },
-  { label: 'Break Hub', groups: ['Group R', 'Group G', 'Group Q', 'Group M', 'Group E', 'Group D', 'Groupe R', 'Groupe G', 'Groupe Q', 'Groupe M', 'Groupe E', 'Groupe D'] },
-] as const;
+const phase1GroupTitles: Record<string, string> = {
+  'group e': 'Grand huit 1',
+  'group g': "break'hub 3",
+  'group a': 'Emperor 1',
+  'group f': "break'hub 2",
+  'group c': 'Grand huit 2',
+  'group d': "break'hub 1",
+  'group b': 'FriendZone',
+} as const;
 
-const groupOrder: string[] = groupAffiliations.flatMap((entry) => entry.groups);
+const groupOrder: string[] = ['Group C', 'Group A', 'Group F', 'Group H', 'Group B', 'Group G', 'Group E', 'Group D'];
 
 type Standing = {
   player: {
@@ -42,7 +44,9 @@ type TournamentState = {
 
 function getGroupAffiliation(groupName: string) {
   const normalizedGroupName = groupName.trim().toLowerCase();
-  return groupAffiliations.find((entry) => entry.groups.some((group) => group.toLowerCase() === normalizedGroupName));
+  const label = phase1GroupTitles[normalizedGroupName];
+
+  return label ? { label } : undefined;
 }
 
 function sortPhase1Groups(left: string, right: string) {
