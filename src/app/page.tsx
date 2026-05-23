@@ -105,6 +105,10 @@ export default async function HomePage() {
                 {t.nav.registration}
                 <ChevronRight size={16} />
               </Link>
+              <Link href="/fixtures" className="hero-cta hero-cta-secondary">
+                {t.nav.fixtures}
+                <CalendarDays size={16} />
+              </Link>
             </div>
 
           </div>
