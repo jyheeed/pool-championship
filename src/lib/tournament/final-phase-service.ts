@@ -33,7 +33,7 @@ type StandingEntry = {
   frameDiff: number;
 };
 
-type FinalBracketSource = 'auto' | 'phase1' | 'phase2';
+type FinalBracketSource = 'auto' | 'phase1' | 'phase2' | 'direct16';
 
 type KnockoutMatchDoc = {
   id: string;
@@ -162,6 +162,27 @@ async function collectPhase2Qualifiers(): Promise<StandingEntry[]> {
   return winners;
 }
 
+async function collectDirect16Players(): Promise<StandingEntry[]> {
+  const players = (await PlayerModel.find({}).sort({ isSeeded: -1, name: 1 }).lean()) as TournamentPlayerDoc[];
+  if (players.length !== 16) {
+    throw new Error(`Direct 16-player draw requires exactly 16 players, got ${players.length}`);
+  }
+
+  return shuffleArray(
+    players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      groupName: 'Direct Draw',
+      wins: 0,
+      losses: 0,
+      points: 0,
+      framesFor: 0,
+      framesAgainst: 0,
+      frameDiff: 0,
+    }))
+  );
+}
+
 async function collectFinalBracketQualifiers(source: FinalBracketSource): Promise<StandingEntry[]> {
   if (source === 'phase1') {
     const phase1Qualifiers = await getPhase1QualifiedPlayers();
@@ -186,13 +207,21 @@ async function collectFinalBracketQualifiers(source: FinalBracketSource): Promis
     return collectPhase2Qualifiers();
   }
 
+  if (source === 'direct16') {
+    return collectDirect16Players();
+  }
+
   try {
     return await collectPhase2Qualifiers();
   } catch (phase2Error) {
     try {
       return await collectFinalBracketQualifiers('phase1');
     } catch {
-      throw phase2Error;
+      try {
+        return await collectDirect16Players();
+      } catch {
+        throw phase2Error;
+      }
     }
   }
 }
@@ -214,9 +243,30 @@ export async function generateFinalBracket(replaceExisting = true, source: Final
   const shuffledWinners = shuffleArray(winners);
   const { date, time } = formatDateParts(new Date());
 
+  const roundOf16Matches: KnockoutMatchDoc[] = shuffledWinners.length === 16
+    ? Array.from({ length: 8 }, (_, index) => {
+        const player1 = shuffledWinners[index * 2];
+        const player2 = shuffledWinners[index * 2 + 1];
+
+        return {
+          id: `ko-r16-${index + 1}`,
+          round: `Round of 16 ${index + 1}`,
+          phase: 'knockout',
+          date,
+          time,
+          player1Id: player1.id,
+          player2Id: player2.id,
+          score1: null,
+          score2: null,
+          status: 'scheduled',
+          discipline: '8-ball',
+        };
+      })
+    : [];
+
   const quarterFinals: KnockoutMatchDoc[] = Array.from({ length: 4 }, (_, index) => {
-    const player1 = shuffledWinners[index * 2];
-    const player2 = shuffledWinners[index * 2 + 1];
+    const player1 = shuffledWinners.length === 16 ? `WINNER_ko-r16-${index * 2 + 1}` : shuffledWinners[index * 2].id;
+    const player2 = shuffledWinners.length === 16 ? `WINNER_ko-r16-${index * 2 + 2}` : shuffledWinners[index * 2 + 1].id;
 
     return {
       id: `ko-qf-${index + 1}`,
@@ -224,8 +274,8 @@ export async function generateFinalBracket(replaceExisting = true, source: Final
       phase: 'knockout',
       date,
       time,
-      player1Id: player1.id,
-      player2Id: player2.id,
+      player1Id: player1,
+      player2Id: player2,
       score1: null,
       score2: null,
       status: 'scheduled',
@@ -276,10 +326,16 @@ export async function generateFinalBracket(replaceExisting = true, source: Final
     discipline: '8-ball',
   };
 
-  const bracketMatches = [...quarterFinals, ...semiFinals, finalMatch];
+  const bracketMatches = [...roundOf16Matches, ...quarterFinals, ...semiFinals, finalMatch];
   await MatchModel.insertMany(bracketMatches, { ordered: true });
 
   return {
+    roundOf16: roundOf16Matches.map((match) => ({
+      id: match.id,
+      round: match.round,
+      player1Id: match.player1Id,
+      player2Id: match.player2Id,
+    })),
     qualifiers: winners.map((winner) => ({
       id: winner.id,
       name: winner.name,
@@ -315,6 +371,14 @@ type KnockoutLink = {
 };
 
 const KNOCKOUT_BRACKET_LINKS: Record<string, KnockoutLink> = {
+  'ko-r16-1': { nextMatchId: 'ko-qf-1', nextSlot: 'player1Id' },
+  'ko-r16-2': { nextMatchId: 'ko-qf-1', nextSlot: 'player2Id' },
+  'ko-r16-3': { nextMatchId: 'ko-qf-2', nextSlot: 'player1Id' },
+  'ko-r16-4': { nextMatchId: 'ko-qf-2', nextSlot: 'player2Id' },
+  'ko-r16-5': { nextMatchId: 'ko-qf-3', nextSlot: 'player1Id' },
+  'ko-r16-6': { nextMatchId: 'ko-qf-3', nextSlot: 'player2Id' },
+  'ko-r16-7': { nextMatchId: 'ko-qf-4', nextSlot: 'player1Id' },
+  'ko-r16-8': { nextMatchId: 'ko-qf-4', nextSlot: 'player2Id' },
   'ko-qf-1': { nextMatchId: 'ko-sf-1', nextSlot: 'player1Id' },
   'ko-qf-2': { nextMatchId: 'ko-sf-1', nextSlot: 'player2Id' },
   'ko-qf-3': { nextMatchId: 'ko-sf-2', nextSlot: 'player1Id' },

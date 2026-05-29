@@ -353,7 +353,7 @@ export default function TournamentAdminPage() {
     }
   }
 
-  async function runFinalDraw(source: 'auto' | 'phase1' | 'phase2' = 'auto') {
+  async function runFinalDraw(source: 'auto' | 'phase1' | 'phase2' | 'direct16' = 'auto') {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/tournament/final/draw', {
@@ -766,7 +766,7 @@ export default function TournamentAdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold">8. Final Phase Draw (Knockout)</h2>
-            <p className="text-sm text-white/65">Uses Phase 2 if it exists, or can build a direct bracket from completed Phase 1 standings.</p>
+            <p className="text-sm text-white/65">Uses Phase 2 if it exists, or can build a direct 16-player bracket from the current registered players.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -780,10 +780,10 @@ export default function TournamentAdminPage() {
             <button
               type="button"
               disabled={loading}
-              onClick={() => runFinalDraw('phase1')}
+              onClick={() => runFinalDraw('direct16')}
               className="rounded-lg border border-[rgba(48,183,255,0.35)] bg-[rgba(48,183,255,0.08)] px-4 py-2 text-sm font-semibold text-[var(--accent-blue)] disabled:opacity-50"
             >
-              Direct Final from Existing Data
+              Direct 16-player Draw
             </button>
           </div>
         </div>

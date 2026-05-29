@@ -9,6 +9,7 @@ export const revalidate = 30;
 
 function roundOrder(round: string): number {
   const value = round.toLowerCase();
+  if (value.includes('round of 16')) return 0;
   if (value.includes('quarter')) return 1;
   if (value.includes('semi')) return 2;
   if (value.includes('final')) return 3;

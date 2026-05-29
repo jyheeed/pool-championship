@@ -81,7 +81,7 @@ export const generateGroupMatchesSchema = z.object({
 
 export const finalDrawSchema = z.object({
   replaceExisting: z.boolean().optional().default(true),
-  source: z.enum(['auto', 'phase1', 'phase2']).optional().default('auto'),
+  source: z.enum(['auto', 'phase1', 'phase2', 'direct16']).optional().default('auto'),
 });
 
 export const scheduleGenerationSchema = z.object({
