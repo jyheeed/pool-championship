@@ -7,6 +7,54 @@ import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, normalizeLanguage } from '@/lib/i18n
 export const dynamic = 'force-dynamic';
 export const revalidate = 30;
 
+function translateWinnerLabel(language: 'fr' | 'en' | 'ar', roundType: 'match' | 'quarter' | 'semi' | 'final', index: number): string {
+  const nextIndex = Number.isFinite(index) && index > 0 ? index : 1;
+
+  if (language === 'fr') {
+    if (roundType === 'match') return `Vainqueur match ${nextIndex}`;
+    if (roundType === 'quarter') return `Vainqueur quart de finale ${nextIndex}`;
+    if (roundType === 'semi') return `Vainqueur demi-finale ${nextIndex}`;
+    return 'Vainqueur finale';
+  }
+
+  if (language === 'ar') {
+    if (roundType === 'match') return `الفائز في المباراة ${nextIndex}`;
+    if (roundType === 'quarter') return `الفائز في ربع النهائي ${nextIndex}`;
+    if (roundType === 'semi') return `الفائز في نصف النهائي ${nextIndex}`;
+    return 'الفائز في النهائي';
+  }
+
+  if (roundType === 'match') return `Winner of match ${nextIndex}`;
+  if (roundType === 'quarter') return `Winner of quarter-final ${nextIndex}`;
+  if (roundType === 'semi') return `Winner of semi-final ${nextIndex}`;
+  return 'Winner of the final';
+}
+
+function formatKnockoutParticipantLabel(language: 'fr' | 'en' | 'ar', participantId: string, fallbackName?: string): string {
+  if (fallbackName) return fallbackName;
+
+  const directMatch = participantId.match(/^WINNER_ko-r16-(\d+)$/);
+  if (directMatch) {
+    return translateWinnerLabel(language, 'match', Number(directMatch[1]));
+  }
+
+  const quarterMatch = participantId.match(/^WINNER_ko-qf-(\d+)$/);
+  if (quarterMatch) {
+    return translateWinnerLabel(language, 'quarter', Number(quarterMatch[1]));
+  }
+
+  const semiMatch = participantId.match(/^WINNER_ko-sf-(\d+)$/);
+  if (semiMatch) {
+    return translateWinnerLabel(language, 'semi', Number(semiMatch[1]));
+  }
+
+  if (participantId === 'WINNER_ko-final-1') {
+    return translateWinnerLabel(language, 'final', 1);
+  }
+
+  return participantId;
+}
+
 function roundOrder(round: string): number {
   const value = round.toLowerCase();
   if (value.includes('round of 16')) return 0;
@@ -86,9 +134,9 @@ export default async function FinalsPage() {
                   <div className="flex-1">
                     <p className="text-xs uppercase tracking-[0.22em] text-white/45">{match.round}</p>
                     <div className="mt-3 flex items-center gap-3">
-                      <span className="text-lg font-semibold text-white/90">{match.player1Name || match.player1Id}</span>
+                      <span className="text-lg font-semibold text-white/90">{formatKnockoutParticipantLabel(language, match.player1Id, match.player1Name)}</span>
                       <span className="text-white/28">vs</span>
-                      <span className="text-lg font-semibold text-white/90">{match.player2Name || match.player2Id}</span>
+                      <span className="text-lg font-semibold text-white/90">{formatKnockoutParticipantLabel(language, match.player2Id, match.player2Name)}</span>
                     </div>
                   </div>
 
