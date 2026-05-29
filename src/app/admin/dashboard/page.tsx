@@ -598,13 +598,17 @@ export default function AdminDashboard() {
   }
 
   async function runFinalDraw() {
-    if (!confirm(tx(language, 'Générer le bracket final à partir des qualifiés de Phase 2. Continuer ?', 'Generate the final bracket from Phase 2 qualifiers. Continue?', 'توليد bracket النهائي من المتأهلين في المرحلة 2. هل تريد المتابعة؟'))) return;
+    if (!confirm(tx(language, 'Générer le tirage final direct à 16 joueurs et séparer les joueurs protégés. Continuer ?', 'Generate the direct 16-player final draw and separate protected players. Continue?', 'توليد السحب النهائي المباشر لـ 16 لاعبًا مع فصل اللاعبين المحميين. هل تريد المتابعة؟'))) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/tournament/final/draw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replaceExisting: true, source: 'direct16' }),
+        body: JSON.stringify({
+          replaceExisting: true,
+          source: 'direct16',
+          protectedPlayerNames: ['kouki akrem', 'jihed zouaghi', 'med yassin bouchoucha', 'ben nasr anas'],
+        }),
       });
       const d = await res.json();
       if (d.success) {

@@ -35,6 +35,10 @@ type StandingEntry = {
 
 type FinalBracketSource = 'auto' | 'phase1' | 'phase2' | 'direct16';
 
+type FinalDrawOptions = {
+  protectedPlayerNames?: string[];
+};
+
 type KnockoutMatchDoc = {
   id: string;
   round: string;
@@ -64,6 +68,10 @@ function shuffleArray<T>(items: T[]): T[] {
     [result[index], result[nextIndex]] = [result[nextIndex], result[index]];
   }
   return result;
+}
+
+function normalizeName(value: string): string {
+  return value.trim().toLowerCase();
 }
 
 function compareStandings(a: StandingEntry, b: StandingEntry): number {
@@ -162,25 +170,50 @@ async function collectPhase2Qualifiers(): Promise<StandingEntry[]> {
   return winners;
 }
 
-async function collectDirect16Players(): Promise<StandingEntry[]> {
+async function collectDirect16Players(protectedPlayerNames: string[] = []): Promise<StandingEntry[]> {
   const players = (await PlayerModel.find({}).sort({ isSeeded: -1, name: 1 }).lean()) as TournamentPlayerDoc[];
   if (players.length !== 16) {
     throw new Error(`Direct 16-player draw requires exactly 16 players, got ${players.length}`);
   }
 
-  return shuffleArray(
-    players.map((player) => ({
-      id: player.id,
-      name: player.name,
-      groupName: 'Direct Draw',
-      wins: 0,
-      losses: 0,
-      points: 0,
-      framesFor: 0,
-      framesAgainst: 0,
-      frameDiff: 0,
-    }))
-  );
+  const protectedNames = new Set(protectedPlayerNames.map(normalizeName).filter(Boolean));
+  const protectedPlayers = players.filter((player) => protectedNames.has(normalizeName(player.name)));
+  const otherPlayers = players.filter((player) => !protectedNames.has(normalizeName(player.name)));
+
+  if (protectedPlayers.length > 0 && protectedPlayers.length > otherPlayers.length) {
+    throw new Error('Not enough non-protected players to separate the protected draw seeds');
+  }
+
+  const arrangedPlayers: TournamentPlayerDoc[] = [];
+  const shuffledProtectedPlayers = shuffleArray(protectedPlayers);
+  const shuffledOtherPlayers = shuffleArray(otherPlayers);
+
+  for (const protectedPlayer of shuffledProtectedPlayers) {
+    arrangedPlayers.push(protectedPlayer);
+    const opponent = shuffledOtherPlayers.shift();
+    if (!opponent) {
+      throw new Error('Unable to build protected direct draw pairings');
+    }
+    arrangedPlayers.push(opponent);
+  }
+
+  arrangedPlayers.push(...shuffleArray(shuffledOtherPlayers));
+
+  if (arrangedPlayers.length !== 16) {
+    throw new Error(`Direct 16-player draw could not build 16 arranged players, got ${arrangedPlayers.length}`);
+  }
+
+  return arrangedPlayers.map((player) => ({
+    id: player.id,
+    name: player.name,
+    groupName: 'Direct Draw',
+    wins: 0,
+    losses: 0,
+    points: 0,
+    framesFor: 0,
+    framesAgainst: 0,
+    frameDiff: 0,
+  }));
 }
 
 async function collectFinalBracketQualifiers(source: FinalBracketSource): Promise<StandingEntry[]> {
@@ -226,10 +259,12 @@ async function collectFinalBracketQualifiers(source: FinalBracketSource): Promis
   }
 }
 
-export async function generateFinalBracket(replaceExisting = true, source: FinalBracketSource = 'auto') {
+export async function generateFinalBracket(replaceExisting = true, source: FinalBracketSource = 'auto', options: FinalDrawOptions = {}) {
   await dbConnect();
 
-  const winners = await collectFinalBracketQualifiers(source);
+  const winners = source === 'direct16'
+    ? await collectDirect16Players(options.protectedPlayerNames || [])
+    : await collectFinalBracketQualifiers(source);
 
   if (replaceExisting) {
     await MatchModel.deleteMany({ phase: 'knockout' });
@@ -240,7 +275,7 @@ export async function generateFinalBracket(replaceExisting = true, source: Final
     }
   }
 
-  const shuffledWinners = shuffleArray(winners);
+  const shuffledWinners = source === 'direct16' ? winners : shuffleArray(winners);
   const { date, time } = formatDateParts(new Date());
 
   const roundOf16Matches: KnockoutMatchDoc[] = shuffledWinners.length === 16

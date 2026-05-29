@@ -16,7 +16,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: parsed.error.issues[0]?.message || 'Invalid payload' }, { status: 400 });
     }
 
-    const result = await generateFinalBracket(parsed.data.replaceExisting, parsed.data.source);
+    const result = await generateFinalBracket(parsed.data.replaceExisting, parsed.data.source, {
+      protectedPlayerNames: parsed.data.protectedPlayerNames,
+    });
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {
     return internalServerError(error, 'admin.tournament.final.draw.POST');

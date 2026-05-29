@@ -82,6 +82,7 @@ export const generateGroupMatchesSchema = z.object({
 export const finalDrawSchema = z.object({
   replaceExisting: z.boolean().optional().default(true),
   source: z.enum(['auto', 'phase1', 'phase2', 'direct16']).optional().default('auto'),
+  protectedPlayerNames: z.array(requiredText('Protected player name', 120)).optional().default([]),
 });
 
 export const scheduleGenerationSchema = z.object({
