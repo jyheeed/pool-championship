@@ -79,6 +79,11 @@ export const generateGroupMatchesSchema = z.object({
   replaceExisting: z.boolean().optional().default(true),
 });
 
+export const finalDrawSchema = z.object({
+  replaceExisting: z.boolean().optional().default(true),
+  source: z.enum(['auto', 'phase1', 'phase2']).optional().default('auto'),
+});
+
 export const scheduleGenerationSchema = z.object({
   startDateTime: requiredText('Start date time', 64),
   matchDurationMinutes: z.coerce.number().int().min(5).max(300),

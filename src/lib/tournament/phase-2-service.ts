@@ -85,7 +85,7 @@ function formatDateParts(date: Date): { date: string; time: string } {
   };
 }
 
-async function getPhase1QualifiedPlayers(): Promise<QualifiedPlayer[]> {
+export async function getPhase1QualifiedPlayers(): Promise<QualifiedPlayer[]> {
   const players = (await PlayerModel.find({ poolGroup: { $nin: [null, ''] } }).lean()) as TournamentPlayerDoc[];
   const rawGroupNames = Array.from(new Set(players.map((player) => player.poolGroup?.trim()).filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b));
 

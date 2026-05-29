@@ -353,13 +353,13 @@ export default function TournamentAdminPage() {
     }
   }
 
-  async function runFinalDraw() {
+  async function runFinalDraw(source: 'auto' | 'phase1' | 'phase2' = 'auto') {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/tournament/final/draw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replaceExisting: true }),
+        body: JSON.stringify({ replaceExisting: true, source }),
       });
       const data = await res.json();
 
@@ -766,16 +766,26 @@ export default function TournamentAdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold">8. Final Phase Draw (Knockout)</h2>
-            <p className="text-sm text-white/65">Takes top 1 from each Phase 2 group and generates quarter-finals, semi-finals, and final.</p>
+            <p className="text-sm text-white/65">Uses Phase 2 if it exists, or can build a direct bracket from completed Phase 1 standings.</p>
           </div>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={runFinalDraw}
-            className="rounded-lg border border-[rgba(255,194,71,0.35)] bg-[rgba(255,194,71,0.08)] px-4 py-2 text-sm font-semibold text-[var(--accent-gold)] disabled:opacity-50"
-          >
-            Generate Final Bracket
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => runFinalDraw('auto')}
+              className="rounded-lg border border-[rgba(255,194,71,0.35)] bg-[rgba(255,194,71,0.08)] px-4 py-2 text-sm font-semibold text-[var(--accent-gold)] disabled:opacity-50"
+            >
+              Generate Final Bracket
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => runFinalDraw('phase1')}
+              className="rounded-lg border border-[rgba(48,183,255,0.35)] bg-[rgba(48,183,255,0.08)] px-4 py-2 text-sm font-semibold text-[var(--accent-blue)] disabled:opacity-50"
+            >
+              Direct Final from Existing Data
+            </button>
+          </div>
         </div>
 
         <p className="text-sm text-white/65">Total knockout matches: {knockoutMatches.length}</p>

@@ -1,6 +1,7 @@
 import dbConnect from '@/lib/mongodb';
 import PlayerModel from '@/models/Player';
 import MatchModel from '@/models/Match';
+import { getPhase1QualifiedPlayers } from '@/lib/tournament/phase-2-service';
 
 type TournamentPlayerDoc = {
   id: string;
@@ -31,6 +32,8 @@ type StandingEntry = {
   framesAgainst: number;
   frameDiff: number;
 };
+
+type FinalBracketSource = 'auto' | 'phase1' | 'phase2';
 
 type KnockoutMatchDoc = {
   id: string;
@@ -70,9 +73,7 @@ function compareStandings(a: StandingEntry, b: StandingEntry): number {
   return a.name.localeCompare(b.name);
 }
 
-export async function generateFinalBracket(replaceExisting = true) {
-  await dbConnect();
-
+async function collectPhase2Qualifiers(): Promise<StandingEntry[]> {
   const phase2Players = (await PlayerModel.find({ phase2Group: { $nin: [null, ''] } }).lean()) as TournamentPlayerDoc[];
   if (phase2Players.length === 0) {
     throw new Error('No Phase 2 groups found. Generate and complete Phase 2 first.');
@@ -157,6 +158,49 @@ export async function generateFinalBracket(replaceExisting = true) {
   if (winners.length !== 8) {
     throw new Error(`Final phase requires 8 qualifiers, got ${winners.length}`);
   }
+
+  return winners;
+}
+
+async function collectFinalBracketQualifiers(source: FinalBracketSource): Promise<StandingEntry[]> {
+  if (source === 'phase1') {
+    const phase1Qualifiers = await getPhase1QualifiedPlayers();
+    if (phase1Qualifiers.length !== 8) {
+      throw new Error(`Direct final bracket requires 8 qualified players, got ${phase1Qualifiers.length}`);
+    }
+
+    return phase1Qualifiers.map((player) => ({
+      id: player.id,
+      name: player.name,
+      groupName: player.sourceGroup,
+      wins: 0,
+      losses: 0,
+      points: player.points,
+      framesFor: player.framesWon,
+      framesAgainst: 0,
+      frameDiff: player.frameDiff,
+    }));
+  }
+
+  if (source === 'phase2') {
+    return collectPhase2Qualifiers();
+  }
+
+  try {
+    return await collectPhase2Qualifiers();
+  } catch (phase2Error) {
+    try {
+      return await collectFinalBracketQualifiers('phase1');
+    } catch {
+      throw phase2Error;
+    }
+  }
+}
+
+export async function generateFinalBracket(replaceExisting = true, source: FinalBracketSource = 'auto') {
+  await dbConnect();
+
+  const winners = await collectFinalBracketQualifiers(source);
 
   if (replaceExisting) {
     await MatchModel.deleteMany({ phase: 'knockout' });
