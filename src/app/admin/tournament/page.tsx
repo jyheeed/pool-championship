@@ -75,6 +75,23 @@ function getPhase2GroupLabel(groupName: string): string {
   return getPhase2Label(groupName);
 }
 
+function formatKnockoutParticipantLabel(participantId: string, fallbackName?: string): string {
+  if (fallbackName) return fallbackName;
+
+  const directMatch = participantId.match(/^WINNER_ko-r16-(\d+)$/);
+  if (directMatch) return `Winner of match ${directMatch[1]}`;
+
+  const quarterMatch = participantId.match(/^WINNER_ko-qf-(\d+)$/);
+  if (quarterMatch) return `Winner of quarter-final ${quarterMatch[1]}`;
+
+  const semiMatch = participantId.match(/^WINNER_ko-sf-(\d+)$/);
+  if (semiMatch) return `Winner of semi-final ${semiMatch[1]}`;
+
+  if (participantId === 'WINNER_ko-final-1') return 'Winner of the final';
+
+  return participantId;
+}
+
 function toLocalDateTimeValue(iso: string | null): string {
   if (!iso) return '';
   const date = new Date(iso);
@@ -805,7 +822,7 @@ export default function TournamentAdminPage() {
                   <tr key={match.id} className="border-b border-white/5">
                     <td className="px-2 py-2">{match.round}</td>
                     <td className="px-2 py-2">
-                      {playerNameById.get(match.player1Id) || match.player1Id} vs {playerNameById.get(match.player2Id) || match.player2Id}
+                      {formatKnockoutParticipantLabel(match.player1Id, playerNameById.get(match.player1Id))} vs {formatKnockoutParticipantLabel(match.player2Id, playerNameById.get(match.player2Id))}
                     </td>
                     <td className="px-2 py-2">{match.status}</td>
                   </tr>
