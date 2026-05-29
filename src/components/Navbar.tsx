@@ -9,7 +9,7 @@ import { getLanguageName, getTranslations, LANGUAGE_COOKIE, type Language } from
 const NAV = [
   { href: '/', key: 'overview', icon: Gauge },
   { href: '/draw', key: 'draw', icon: LayoutGrid },
-  { href: '/fixtures', key: 'fixtures', icon: CalendarDays },
+  { href: '/schedule', key: 'schedule', icon: CalendarDays },
   { href: '/results', key: 'results', icon: Trophy },
   { href: '/finals', key: 'finals', icon: Trophy },
   { href: '/players', key: 'players', icon: Users },
