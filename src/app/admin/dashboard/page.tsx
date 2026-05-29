@@ -604,7 +604,7 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/tournament/final/draw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replaceExisting: true }),
+        body: JSON.stringify({ replaceExisting: true, source: 'direct16' }),
       });
       const d = await res.json();
       if (d.success) {
@@ -1575,10 +1575,11 @@ export default function AdminDashboard() {
               </button>
               <button
                 onClick={runFinalDraw}
-                disabled={loading || Object.keys(phase2Groups).length === 0}
+                disabled={loading || players.length !== 16}
                 className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-gold)] px-4 py-2 text-sm font-bold text-black transition-all hover:brightness-110 disabled:opacity-40"
+                title={tx(language, 'Nécessite exactement 16 joueurs enregistrés', 'Requires exactly 16 registered players', 'يتطلب بالضبط 16 لاعبًا مسجلًا')}
               >
-                <Swords size={14} /> {tx(language, 'Générer tirage final', 'Generate Final Bracket', 'توليد bracket النهائي')}
+                <Swords size={14} /> {tx(language, 'Tirage final direct 16 joueurs', 'Direct 16-player final draw', 'سحب نهائي مباشر لـ 16 لاعبًا')}
               </button>
               <button
                 onClick={resetFinalDraw}
