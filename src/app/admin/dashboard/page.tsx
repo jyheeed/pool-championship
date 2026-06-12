@@ -598,31 +598,80 @@ export default function AdminDashboard() {
   }
 
   async function runFinalDraw() {
-    if (!confirm(tx(language, 'Générer le tirage final direct à 16 joueurs et séparer les joueurs protégés. Continuer ?', 'Generate the direct 16-player final draw and separate protected players. Continue?', 'توليد السحب النهائي المباشر لـ 16 لاعبًا مع فصل اللاعبين المحميين. هل تريد المتابعة؟'))) return;
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/tournament/final/draw', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          replaceExisting: true,
-          source: 'direct16',
-          protectedPlayerNames: ['kouki akrem', 'jihed zouaghi', 'med yassin bouchoucha', 'ben nasr anas'],
-        }),
-      });
-      const d = await res.json();
-      if (d.success) {
-        flash(tx(language, `Bracket final généré: ${d.data?.count || 0} matchs`, `Final bracket generated: ${d.data?.count || 0} matches`, `تم توليد bracket النهائي: ${d.data?.count || 0} مباراة`));
-        await load();
-      } else {
-        flash(d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
-      }
-    } catch {
-      flash(tx(language, 'Erreur réseau', 'Network error', 'خطأ الشبكة'));
-    } finally {
-      setLoading(false);
-    }
+  if (players.length === 0) {
+    flash(
+      tx(
+        language,
+        'Aucun joueur inscrit pour générer le tirage.',
+        'No registered players available to generate the draw.',
+        'لا يوجد لاعبون مسجلون لتوليد السحب.'
+      )
+    );
+    return;
   }
+
+  const hasExistingDraw = knockoutMatches.length > 0;
+
+  if (
+    hasExistingDraw &&
+    !confirm(
+      tx(
+        language,
+        'Un tirage tournoi existe déjà. Voulez-vous le remplacer ?',
+        'A tournament draw already exists. Do you want to replace it?',
+        'يوجد سحب بطولة بالفعل. هل تريد استبداله؟'
+      )
+    )
+  ) {
+    return;
+  }
+
+  if (
+    !confirm(
+      tx(
+        language,
+        'Générer le tirage tournoi normal avec tous les joueurs inscrits ? Le système choisira automatiquement un tableau de 16, 32, 64, 128... et ajoutera des X si nécessaire.',
+        'Generate the normal tournament draw with all registered players? The system will automatically choose a 16, 32, 64, 128... bracket and add X slots if needed.',
+        'توليد سحب البطولة العادي بكل اللاعبين المسجلين؟ سيختار النظام تلقائياً جدول 16 أو 32 أو 64 أو 128... ويضيف خانات X إذا لزم الأمر.'
+      )
+    )
+  ) {
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const res = await fetch('/api/admin/tournament/final/draw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        replaceExisting: hasExistingDraw,
+        source: 'registered',
+      }),
+    });
+
+    const d = await res.json();
+
+    if (d.success) {
+      flash(
+        tx(
+          language,
+          `Tirage tournoi généré: ${d.data?.count || 0} matchs`,
+          `Tournament draw generated: ${d.data?.count || 0} matches`,
+          `تم توليد سحب البطولة: ${d.data?.count || 0} مباراة`
+        )
+      );
+      await load();
+    } else {
+      flash(d.error || tx(language, 'Erreur', 'Error', 'خطأ'));
+    }
+  } catch {
+    flash(tx(language, 'Erreur réseau', 'Network error', 'خطأ الشبكة'));
+  } finally {
+    setLoading(false);
+  }
+}
 
   async function resetFinalDraw() {
     if (!confirm(tx(language, 'Réinitialiser le bracket final ? Les matchs de phase finale seront supprimés pour pouvoir regénérer le tirage. Continuer ?', 'Reset the final bracket? Final phase matches will be deleted so you can regenerate the draw. Continue?', 'إعادة تعيين bracket النهائي؟ سيتم حذف مباريات المرحلة النهائية حتى تتمكن من إعادة توليد السحب. هل تريد المتابعة؟'))) return;
@@ -1579,18 +1628,35 @@ export default function AdminDashboard() {
               </button>
               <button
                 onClick={runFinalDraw}
-                disabled={loading || players.length !== 16}
+                disabled={loading || players.length === 0}
                 className="flex items-center gap-1.5 rounded-lg bg-[var(--accent-gold)] px-4 py-2 text-sm font-bold text-black transition-all hover:brightness-110 disabled:opacity-40"
-                title={tx(language, 'Nécessite exactement 16 joueurs enregistrés', 'Requires exactly 16 registered players', 'يتطلب بالضبط 16 لاعبًا مسجلًا')}
+                title={tx(
+                  language,
+                  'Génère un tirage tournoi normal avec les joueurs inscrits. Le tableau sera automatiquement 16, 32, 64, 128... avec des X si nécessaire.',
+                  'Generates a normal tournament draw with registered players. The bracket will automatically be 16, 32, 64, 128... with X slots if needed.',
+                  'يولد سحب بطولة عادي باللاعبين المسجلين. سيكون الجدول تلقائياً 16 أو 32 أو 64 أو 128... مع خانات X إذا لزم الأمر.'
+                )}
               >
-                <Swords size={14} /> {tx(language, 'Tirage final direct 16 joueurs', 'Direct 16-player final draw', 'سحب نهائي مباشر لـ 16 لاعبًا')}
+                <Swords size={14} />{' '}
+                {tx(
+                  language,
+                  'Tirage tournoi',
+                  'Tournament Draw',
+                  'سحب البطولة'
+                )}
               </button>
               <button
                 onClick={resetFinalDraw}
                 disabled={loading || knockoutMatches.length === 0}
                 className="flex items-center gap-1.5 rounded-lg border border-[rgba(255,255,255,0.14)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-bold text-[var(--text-primary)] transition-all hover:brightness-110 disabled:opacity-40"
               >
-                <RefreshCw size={14} /> {tx(language, 'Réinitialiser tirage final', 'Reset Final Bracket', 'إعادة تعيين bracket النهائي')}
+                <RefreshCw size={14} />{' '}
+                {tx(
+                  language,
+                  'Réinitialiser tirage tournoi',
+                  'Reset Tournament Draw',
+                  'إعادة تعيين سحب البطولة'
+                )}
               </button>
               <button
                 onClick={resetPhase2Draw}
