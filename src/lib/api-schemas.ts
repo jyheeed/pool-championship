@@ -126,6 +126,6 @@ export const registerSchema = z.object({
 export const scoreUpdateSchema = z.object({
   score1: z.coerce.number().int().min(0),
   score2: z.coerce.number().int().min(0),
-  status: z.enum(['scheduled', 'live', 'completed', 'postponed']),
+  status: z.enum(['scheduled', 'live', 'completed', 'postponed', 'pending', 'bye']).optional(),
   frameScores: optionalText(120),
 });
