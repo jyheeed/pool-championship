@@ -24,7 +24,9 @@ export interface Player {
 
 export interface Match {
   id: string;
+  tournamentId?: string;
   round: string;
+  matchNumber?: number;
   date: string;
   time?: string;
   venue?: string;
@@ -37,9 +39,10 @@ export interface Match {
   player2Id: string;
   player1Name?: string;
   player2Name?: string;
+  winnerId?: string | null;
   score1: number | null;
   score2: number | null;
-  status: 'scheduled' | 'live' | 'completed' | 'postponed';
+  status: 'scheduled' | 'live' | 'completed' | 'postponed' | 'pending' | 'bye';
   frameScores?: string;
   notes?: string;
   discipline?: '8-ball' | '9-ball' | '10-ball';

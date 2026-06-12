@@ -34,6 +34,7 @@ type TournamentMatchDoc = {
   phase?: 'group' | 'group2' | 'knockout';
   groupName?: string;
   roundNumber?: number;
+  matchNumber?: number;
   date: string;
   time?: string;
   scheduledAt?: Date;
@@ -41,9 +42,11 @@ type TournamentMatchDoc = {
   venue?: string;
   player1Id: string;
   player2Id: string;
+  winnerId?: string | null;
   score1: number | null;
   score2: number | null;
   status: 'scheduled' | 'live' | 'completed' | 'postponed';
+  tournamentId?: string;
 };
 
 function normalizeGroupNames(groupNames: string[]): string[] {
@@ -88,7 +91,7 @@ export async function getTournamentState() {
   const players = (await PlayerModel.find({}).sort({ name: 1 }).lean()) as TournamentPlayerDoc[];
   const matches = (await MatchModel.find({ phase: 'group' }).sort({ groupName: 1, roundNumber: 1, scheduledAt: 1 }).lean()) as TournamentMatchDoc[];
   const phase2Matches = (await MatchModel.find({ phase: 'group2' }).sort({ groupName: 1, roundNumber: 1, scheduledAt: 1 }).lean()) as TournamentMatchDoc[];
-  const knockoutMatches = (await MatchModel.find({ phase: 'knockout' }).sort({ round: 1, scheduledAt: 1, id: 1 }).lean()) as TournamentMatchDoc[];
+  const knockoutMatches = (await MatchModel.find({ phase: 'knockout' }).sort({ roundNumber: 1, matchNumber: 1, scheduledAt: 1, id: 1 }).lean()) as TournamentMatchDoc[];
 
   const groups: Record<string, { id: string; name: string; isSeeded: boolean }[]> = {};
   const phase2Groups: Record<string, { id: string; name: string; sourceGroup: string | null }[]> = {};
@@ -152,16 +155,19 @@ export async function getTournamentState() {
     groupName: match.groupName || '',
     round: match.round,
     roundNumber: match.roundNumber,
+    matchNumber: match.matchNumber ?? null,
     player1Id: match.player1Id,
     player2Id: match.player2Id,
     status: match.status,
     score1: match.score1,
     score2: match.score2,
+    winnerId: match.winnerId ?? null,
     scheduledAt: match.scheduledAt ? match.scheduledAt.toISOString() : null,
     venue: match.venue || null,
     tableNumber: match.tableNumber ?? null,
     date: match.date,
     time: match.time || '',
+    tournamentId: match.tournamentId || null,
   }));
 
   return {

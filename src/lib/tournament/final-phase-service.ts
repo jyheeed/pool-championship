@@ -1,7 +1,9 @@
 import dbConnect from '@/lib/mongodb';
 import PlayerModel from '@/models/Player';
 import MatchModel from '@/models/Match';
+import { getSettings } from '@/lib/mongo-service';
 import { getPhase1QualifiedPlayers } from '@/lib/tournament/phase-2-service';
+import { generateTournamentDraw, saveTournamentDrawToDatabase, type KnockoutPlayerInput } from '@/lib/tournament/knockout-draw';
 
 type TournamentPlayerDoc = {
   id: string;
@@ -12,13 +14,17 @@ type TournamentPlayerDoc = {
 type TournamentMatchDoc = {
   id: string;
   round?: string;
+  roundNumber?: number;
+  matchNumber?: number;
   phase?: 'group' | 'group2' | 'knockout';
   groupName?: string;
   player1Id: string;
   player2Id: string;
   score1: number | null;
   score2: number | null;
-  status: 'scheduled' | 'live' | 'completed' | 'postponed';
+  status: 'scheduled' | 'live' | 'completed' | 'postponed' | 'pending' | 'bye';
+  winnerId?: string | null;
+  tournamentId?: string;
 };
 
 type StandingEntry = {
@@ -33,7 +39,7 @@ type StandingEntry = {
   frameDiff: number;
 };
 
-type FinalBracketSource = 'auto' | 'phase1' | 'phase2' | 'direct16';
+type FinalBracketSource = 'auto' | 'phase1' | 'phase2' | 'direct16' | 'registered';
 
 type FinalDrawOptions = {
   protectedPlayerNames?: string[];
@@ -72,6 +78,16 @@ function shuffleArray<T>(items: T[]): T[] {
 
 function normalizeName(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function buildTournamentId(name: string, season: string): string {
+  const slug = `${name}-${season}`
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return slug || 'tunisian-championship';
 }
 
 function compareStandings(a: StandingEntry, b: StandingEntry): number {
@@ -216,6 +232,32 @@ async function collectDirect16Players(protectedPlayerNames: string[] = []): Prom
   }));
 }
 
+async function collectRegisteredPlayers(): Promise<KnockoutPlayerInput[]> {
+  const players = (await PlayerModel.find({}).sort({ isSeeded: -1, name: 1 }).lean()) as TournamentPlayerDoc[];
+
+  if (players.length === 0) {
+    throw new Error('No registered players found');
+  }
+
+  return players.map((player) => ({
+    id: player.id,
+    name: player.name,
+  }));
+}
+
+async function generateRegisteredBracket(replaceExisting: boolean) {
+  const players = await collectRegisteredPlayers();
+  const settings = await getSettings();
+  const draw = generateTournamentDraw(players);
+
+  const saved = await saveTournamentDrawToDatabase(draw, {
+    replaceExisting,
+    phase: 'knockout',
+    tournamentId: buildTournamentId(settings.name, settings.season),
+  });
+  return saved;
+}
+
 async function collectFinalBracketQualifiers(source: FinalBracketSource): Promise<StandingEntry[]> {
   if (source === 'phase1') {
     const phase1Qualifiers = await getPhase1QualifiedPlayers();
@@ -261,6 +303,153 @@ async function collectFinalBracketQualifiers(source: FinalBracketSource): Promis
 
 export async function generateFinalBracket(replaceExisting = true, source: FinalBracketSource = 'auto', options: FinalDrawOptions = {}) {
   await dbConnect();
+
+  if (source === 'registered') {
+    return generateRegisteredBracket(replaceExisting);
+  }
+
+  if (source === 'auto') {
+    let winners: StandingEntry[];
+
+    try {
+      winners = await collectFinalBracketQualifiers(source);
+    } catch {
+      return generateRegisteredBracket(replaceExisting);
+    }
+
+    if (replaceExisting) {
+      await MatchModel.deleteMany({ phase: 'knockout' });
+    } else {
+      const existingKnockoutCount = await MatchModel.countDocuments({ phase: 'knockout' });
+      if (existingKnockoutCount > 0) {
+        throw new Error('Knockout matches already exist. Use replaceExisting=true to regenerate.');
+      }
+    }
+
+    const shuffledWinners = shuffleArray(winners);
+    const { date, time } = formatDateParts(new Date());
+
+    const roundOf16Matches: KnockoutMatchDoc[] = shuffledWinners.length === 16
+      ? Array.from({ length: 8 }, (_, index) => {
+          const player1 = shuffledWinners[index * 2];
+          const player2 = shuffledWinners[index * 2 + 1];
+
+          return {
+            id: `ko-r16-${index + 1}`,
+            round: `Round of 16 ${index + 1}`,
+            phase: 'knockout',
+            date,
+            time,
+            player1Id: player1.id,
+            player2Id: player2.id,
+            score1: null,
+            score2: null,
+            status: 'scheduled',
+            discipline: '8-ball',
+          };
+        })
+      : [];
+
+    const quarterFinals: KnockoutMatchDoc[] = Array.from({ length: 4 }, (_, index) => {
+      const player1 = shuffledWinners.length === 16 ? `WINNER_ko-r16-${index * 2 + 1}` : shuffledWinners[index * 2].id;
+      const player2 = shuffledWinners.length === 16 ? `WINNER_ko-r16-${index * 2 + 2}` : shuffledWinners[index * 2 + 1].id;
+
+      return {
+        id: `ko-qf-${index + 1}`,
+        round: `Quarter Final ${index + 1}`,
+        phase: 'knockout',
+        date,
+        time,
+        player1Id: player1,
+        player2Id: player2,
+        score1: null,
+        score2: null,
+        status: 'scheduled',
+        discipline: '8-ball',
+      };
+    });
+
+    const semiFinals: KnockoutMatchDoc[] = [
+      {
+        id: 'ko-sf-1',
+        round: 'Semi Final 1',
+        phase: 'knockout',
+        date,
+        time,
+        player1Id: 'WINNER_ko-qf-1',
+        player2Id: 'WINNER_ko-qf-2',
+        score1: null,
+        score2: null,
+        status: 'scheduled',
+        discipline: '8-ball',
+      },
+      {
+        id: 'ko-sf-2',
+        round: 'Semi Final 2',
+        phase: 'knockout',
+        date,
+        time,
+        player1Id: 'WINNER_ko-qf-3',
+        player2Id: 'WINNER_ko-qf-4',
+        score1: null,
+        score2: null,
+        status: 'scheduled',
+        discipline: '8-ball',
+      },
+    ];
+
+    const finalMatch: KnockoutMatchDoc = {
+      id: 'ko-final-1',
+      round: 'Final',
+      phase: 'knockout',
+      date,
+      time,
+      player1Id: 'WINNER_ko-sf-1',
+      player2Id: 'WINNER_ko-sf-2',
+      score1: null,
+      score2: null,
+      status: 'scheduled',
+      discipline: '8-ball',
+    };
+
+    const bracketMatches = [...roundOf16Matches, ...quarterFinals, ...semiFinals, finalMatch];
+    await MatchModel.insertMany(bracketMatches, { ordered: true });
+
+    return {
+      roundOf16: roundOf16Matches.map((match) => ({
+        id: match.id,
+        round: match.round,
+        player1Id: match.player1Id,
+        player2Id: match.player2Id,
+      })),
+      qualifiers: winners.map((winner) => ({
+        id: winner.id,
+        name: winner.name,
+        phase2Group: winner.groupName,
+        points: winner.points,
+        frameDiff: winner.frameDiff,
+      })),
+      quarterFinals: quarterFinals.map((match) => ({
+        id: match.id,
+        round: match.round,
+        player1Id: match.player1Id,
+        player2Id: match.player2Id,
+      })),
+      semiFinals: semiFinals.map((match) => ({
+        id: match.id,
+        round: match.round,
+        player1Id: match.player1Id,
+        player2Id: match.player2Id,
+      })),
+      final: {
+        id: finalMatch.id,
+        round: finalMatch.round,
+        player1Id: finalMatch.player1Id,
+        player2Id: finalMatch.player2Id,
+      },
+      count: bracketMatches.length,
+    };
+  }
 
   const winners = source === 'direct16'
     ? await collectDirect16Players(options.protectedPlayerNames || [])
@@ -400,12 +589,14 @@ export async function generateFinalBracket(replaceExisting = true, source: Final
   };
 }
 
-type KnockoutLink = {
-  nextMatchId: string;
+type KnockoutPlacement = {
+  nextMatchId?: string;
+  nextRoundNumber?: number;
+  nextMatchNumber?: number;
   nextSlot: 'player1Id' | 'player2Id';
 };
 
-const KNOCKOUT_BRACKET_LINKS: Record<string, KnockoutLink> = {
+const FIXED_KNOCKOUT_PLACEMENTS: Record<string, KnockoutPlacement> = {
   'ko-r16-1': { nextMatchId: 'ko-qf-1', nextSlot: 'player1Id' },
   'ko-r16-2': { nextMatchId: 'ko-qf-1', nextSlot: 'player2Id' },
   'ko-r16-3': { nextMatchId: 'ko-qf-2', nextSlot: 'player1Id' },
@@ -423,46 +614,69 @@ const KNOCKOUT_BRACKET_LINKS: Record<string, KnockoutLink> = {
 };
 
 function getKnockoutWinner(match: TournamentMatchDoc): string | null {
+  if (match.winnerId) return match.winnerId;
   if (match.score1 === null || match.score2 === null) return null;
   if (match.score1 === match.score2) return null;
   return match.score1 > match.score2 ? match.player1Id : match.player2Id;
 }
 
-export async function advanceKnockoutBracket(matchId: string) {
-  await dbConnect();
-
-  const link = KNOCKOUT_BRACKET_LINKS[matchId];
-  if (!link) {
-    return { advanced: false, reason: 'No next round mapping for this match' };
+function getKnockoutPlacement(match: TournamentMatchDoc): KnockoutPlacement | null {
+  if (typeof match.roundNumber === 'number' && typeof match.matchNumber === 'number') {
+    return {
+      nextRoundNumber: match.roundNumber + 1,
+      nextMatchNumber: Math.ceil(match.matchNumber / 2),
+      nextSlot: match.matchNumber % 2 === 1 ? 'player1Id' : 'player2Id',
+    };
   }
 
-  const currentMatch = (await MatchModel.findOne({ id: matchId, phase: 'knockout' }).lean()) as TournamentMatchDoc | null;
-  if (!currentMatch) {
-    throw new Error('Knockout match not found');
-  }
+  return FIXED_KNOCKOUT_PLACEMENTS[match.id] || null;
+}
 
-  if (currentMatch.status !== 'completed') {
-    return { advanced: false, reason: 'Current match is not completed yet' };
-  }
-
+async function updateNextKnockoutSlot(currentMatch: TournamentMatchDoc, allowOverwrite: boolean) {
   const winnerId = getKnockoutWinner(currentMatch);
   if (!winnerId) {
     throw new Error('Completed knockout match requires a decisive winner (no draw)');
   }
 
-  const nextMatch = (await MatchModel.findOne({ id: link.nextMatchId, phase: 'knockout' }).lean()) as TournamentMatchDoc | null;
-  if (!nextMatch) {
-    throw new Error('Next knockout match not found');
+  const placement = getKnockoutPlacement(currentMatch);
+  if (!placement) {
+    return { advanced: false, reason: 'No next round mapping for this match', winnerId };
   }
 
+  const nextMatch = await MatchModel.findOne(
+    placement.nextMatchId
+      ? { id: placement.nextMatchId, phase: 'knockout' }
+      : { phase: 'knockout', roundNumber: placement.nextRoundNumber, matchNumber: placement.nextMatchNumber }
+  ).lean<TournamentMatchDoc | null>();
+
+  if (!nextMatch) {
+    return { advanced: false, reason: 'Final completed', winnerId };
+  }
+
+  const currentSlotValue = nextMatch[placement.nextSlot];
+  if (currentSlotValue && currentSlotValue !== winnerId && !allowOverwrite) {
+    return {
+      advanced: false,
+      reason: 'Next slot already occupied',
+      winnerId,
+      fromMatchId: currentMatch.id,
+      toMatchId: nextMatch.id,
+      slot: placement.nextSlot,
+    };
+  }
+
+  const nextStatus = nextMatch.status === 'bye' ? 'scheduled' : nextMatch.status === 'completed' ? 'scheduled' : nextMatch.status;
+  const resetScores = nextMatch.status === 'completed' || (currentSlotValue && currentSlotValue !== winnerId);
+
   await MatchModel.findOneAndUpdate(
-    { id: link.nextMatchId, phase: 'knockout' },
+    { id: nextMatch.id, phase: 'knockout' },
     {
       $set: {
-        [link.nextSlot]: winnerId,
-        status: nextMatch.status === 'completed' ? 'scheduled' : nextMatch.status,
-        score1: nextMatch.status === 'completed' ? null : nextMatch.score1,
-        score2: nextMatch.status === 'completed' ? null : nextMatch.score2,
+        [placement.nextSlot]: winnerId,
+        status: nextStatus,
+        score1: resetScores ? null : nextMatch.score1,
+        score2: resetScores ? null : nextMatch.score2,
+        winnerId: resetScores ? null : nextMatch.winnerId,
       },
     }
   );
@@ -470,8 +684,50 @@ export async function advanceKnockoutBracket(matchId: string) {
   return {
     advanced: true,
     winnerId,
-    fromMatchId: matchId,
-    toMatchId: link.nextMatchId,
-    slot: link.nextSlot,
+    fromMatchId: currentMatch.id,
+    toMatchId: nextMatch.id,
+    slot: placement.nextSlot,
+  };
+}
+
+export async function advanceKnockoutBracket(matchId: string, options: { allowOverwrite?: boolean } = {}) {
+  await dbConnect();
+
+  const currentMatch = (await MatchModel.findOne({ id: matchId, phase: 'knockout' }).lean()) as TournamentMatchDoc | null;
+  if (!currentMatch) {
+    throw new Error('Knockout match not found');
+  }
+
+  if (currentMatch.status !== 'completed' && currentMatch.status !== 'bye') {
+    return { advanced: false, reason: 'Current match is not completed yet' };
+  }
+
+  return updateNextKnockoutSlot(currentMatch, Boolean(options.allowOverwrite));
+}
+
+export async function propagateByeWinners() {
+  await dbConnect();
+
+  const knockoutMatches = (await MatchModel.find({ phase: 'knockout', status: 'bye' }).sort({ roundNumber: 1, matchNumber: 1, id: 1 }).lean()) as TournamentMatchDoc[];
+  const propagated: Array<{ fromMatchId: string; toMatchId?: string; slot?: 'player1Id' | 'player2Id'; winnerId?: string; reason?: string }> = [];
+
+  for (const match of knockoutMatches) {
+    if (!match.winnerId) {
+      continue;
+    }
+
+    const result = await updateNextKnockoutSlot(match, false);
+    propagated.push({
+      fromMatchId: match.id,
+      toMatchId: result.toMatchId,
+      slot: result.slot,
+      winnerId: result.winnerId,
+      reason: result.reason,
+    });
+  }
+
+  return {
+    count: propagated.length,
+    propagated,
   };
 }

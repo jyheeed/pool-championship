@@ -2,7 +2,9 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IMatch extends Document {
   id: string;
+  tournamentId?: string;
   round: string;
+  matchNumber?: number;
   date: string;
   time?: string;
   venue?: string;
@@ -13,9 +15,10 @@ export interface IMatch extends Document {
   tableNumber?: number;
   player1Id: string;
   player2Id: string;
+  winnerId?: string | null;
   score1: number | null;
   score2: number | null;
-  status: 'scheduled' | 'live' | 'completed' | 'postponed';
+  status: 'scheduled' | 'live' | 'completed' | 'postponed' | 'pending' | 'bye';
   frameScores?: string;
   notes?: string;
   discipline?: '8-ball' | '9-ball' | '10-ball';
@@ -23,7 +26,9 @@ export interface IMatch extends Document {
 
 const MatchSchema: Schema = new Schema({
   id: { type: String, required: true, unique: true },
+  tournamentId: { type: String },
   round: { type: String, required: true },
+  matchNumber: { type: Number },
   date: { type: String, required: true },
   time: { type: String },
   venue: { type: String },
@@ -38,11 +43,12 @@ const MatchSchema: Schema = new Schema({
   tableNumber: { type: Number },
   player1Id: { type: String, required: true },
   player2Id: { type: String, required: true },
+  winnerId: { type: String, default: null },
   score1: { type: Number, default: null },
   score2: { type: Number, default: null },
   status: { 
     type: String, 
-    enum: ['scheduled', 'live', 'completed', 'postponed'], 
+    enum: ['scheduled', 'live', 'completed', 'postponed', 'pending', 'bye'], 
     default: 'scheduled' 
   },
   frameScores: { type: String },

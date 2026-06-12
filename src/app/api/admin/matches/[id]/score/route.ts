@@ -30,6 +30,11 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'Match not found' }, { status: 404 });
     }
 
+    let winnerId: string | null = null;
+    if (status === 'completed' && existingMatch.phase === 'knockout' && score1 !== null && score2 !== null && score1 !== score2) {
+      winnerId = score1 > score2 ? existingMatch.player1Id : existingMatch.player2Id;
+    }
+
     if (existingMatch.phase === 'knockout' && status === 'completed' && score1 === score2) {
       return NextResponse.json(
         { success: false, error: 'Knockout matches cannot end in a draw' },
@@ -44,7 +49,8 @@ export async function PATCH(
           score1, 
           score2, 
           status, 
-          frameScores 
+          frameScores,
+          winnerId,
         } 
       },
       { new: true }
@@ -64,7 +70,7 @@ export async function PATCH(
     } | null = null;
 
     if (match.phase === 'knockout' && status === 'completed') {
-      bracketUpdate = await advanceKnockoutBracket(id);
+      bracketUpdate = await advanceKnockoutBracket(id, { allowOverwrite: true });
     }
 
     // Auto-generate final bracket if all Phase 2 matches are completed

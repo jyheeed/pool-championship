@@ -526,7 +526,8 @@ export function getTranslations(language: Language) {
 
 export function translateStatus(
   language: Language,
-  status: 'scheduled' | 'live' | 'postponed' | 'completed'
+  status: 'scheduled' | 'live' | 'postponed' | 'completed' | 'pending' | 'bye'
 ) {
-  return translations[language].home.status[status];
+  const normalizedStatus = status === 'pending' || status === 'bye' ? 'scheduled' : status;
+  return translations[language].home.status[normalizedStatus];
 }

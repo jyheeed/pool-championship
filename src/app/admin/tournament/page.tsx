@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getPhase2Label } from '@/lib/group-labels';
+import { KnockoutBracketView, type KnockoutMatchView } from '@/components/tournament/KnockoutBracketView';
 
 type PlayerRow = {
   id: string;
@@ -32,20 +33,7 @@ type TournamentState = {
     date: string;
     time: string;
   }>;
-  knockoutMatches?: Array<{
-    id: string;
-    groupName: string;
-    round: string;
-    roundNumber?: number;
-    player1Id: string;
-    player2Id: string;
-    status: string;
-    scheduledAt: string | null;
-    venue: string | null;
-    tableNumber: number | null;
-    date: string;
-    time: string;
-  }>;
+  knockoutMatches?: KnockoutMatchView[];
   matches: Array<{
     id: string;
     groupName: string;
@@ -73,23 +61,6 @@ function defaultGroupNames(groupCount: number): string[] {
 
 function getPhase2GroupLabel(groupName: string): string {
   return getPhase2Label(groupName);
-}
-
-function formatKnockoutParticipantLabel(participantId: string, fallbackName?: string): string {
-  if (fallbackName) return fallbackName;
-
-  const directMatch = participantId.match(/^WINNER_ko-r16-(\d+)$/);
-  if (directMatch) return `Winner of match ${directMatch[1]}`;
-
-  const quarterMatch = participantId.match(/^WINNER_ko-qf-(\d+)$/);
-  if (quarterMatch) return `Winner of quarter-final ${quarterMatch[1]}`;
-
-  const semiMatch = participantId.match(/^WINNER_ko-sf-(\d+)$/);
-  if (semiMatch) return `Winner of semi-final ${semiMatch[1]}`;
-
-  if (participantId === 'WINNER_ko-final-1') return 'Winner of the final';
-
-  return participantId;
 }
 
 function toLocalDateTimeValue(iso: string | null): string {
@@ -370,26 +341,68 @@ export default function TournamentAdminPage() {
     }
   }
 
-  async function runFinalDraw(source: 'auto' | 'phase1' | 'phase2' | 'direct16' = 'auto') {
+  async function runRegisteredKnockoutDraw(forceReset = false) {
+    const existingKnockoutMatches = state?.knockoutMatches?.length || 0;
+    if (existingKnockoutMatches > 0) {
+      const confirmed = window.confirm(
+        forceReset
+          ? 'Resetting the normal knockout draw will replace the existing bracket. Continue?'
+          : 'A normal knockout bracket already exists. Generate a new one and replace it?'
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const res = await fetch('/api/admin/tournament/final/draw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replaceExisting: true, source }),
+        body: JSON.stringify({ replaceExisting: true, source: 'registered' }),
       });
       const data = await res.json();
 
       if (!data.success) {
-        flash(data.error || 'Failed to generate final bracket');
+        flash(data.error || 'Failed to generate normal knockout draw');
         return;
       }
 
-      flash(`Final bracket generated with ${data.data?.count || 0} matches`);
+      flash(`Normal knockout draw generated with ${data.data?.count || 0} matches`);
       await load();
     } finally {
       setLoading(false);
     }
+  }
+
+  async function saveKnockoutScore(matchId: string, score1: number, score2: number) {
+    const res = await fetch(`/api/admin/matches/${encodeURIComponent(matchId)}/score`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        score1,
+        score2,
+        status: 'completed',
+      }),
+    });
+
+    const data = await res.json();
+    if (!data.success) {
+      const messageText = data.error || 'Failed to save knockout score';
+      flash(messageText);
+      throw new Error(messageText);
+    }
+
+    if (data.bracketUpdate?.advanced) {
+      flash('Score saved and winner propagated to the next round');
+    } else if (data.bracketUpdate?.reason === 'Final completed') {
+      flash('Score saved. Final completed.');
+    } else {
+      flash('Score saved successfully');
+    }
+
+    await load();
   }
 
   async function runScheduling() {
@@ -779,58 +792,47 @@ export default function TournamentAdminPage() {
         </button>
       </section>
 
-      <section className="panel p-6 space-y-4">
+      <section className="panel p-6 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold">8. Final Phase Draw (Knockout)</h2>
-            <p className="text-sm text-white/65">Uses Phase 2 if it exists, or can build a direct 16-player bracket from the current registered players.</p>
+            <h2 className="text-xl font-semibold">8. Normal Knockout Draw</h2>
+            <p className="text-sm text-white/65">Generate and inspect the normal elimination bracket with automatic byes when the player count is not a power of two.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={loading}
-              onClick={() => runFinalDraw('auto')}
-              className="rounded-lg border border-[rgba(255,194,71,0.35)] bg-[rgba(255,194,71,0.08)] px-4 py-2 text-sm font-semibold text-[var(--accent-gold)] disabled:opacity-50"
+              onClick={() => runRegisteredKnockoutDraw(false)}
+              className="rounded-lg border border-[rgba(71,198,140,0.35)] bg-[rgba(71,198,140,0.08)] px-4 py-2 text-sm font-semibold text-[var(--accent-green)] disabled:opacity-50"
             >
-              Generate Final Bracket
+              Generate Normal Draw
             </button>
             <button
               type="button"
               disabled={loading}
-              onClick={() => runFinalDraw('direct16')}
-              className="rounded-lg border border-[rgba(48,183,255,0.35)] bg-[rgba(48,183,255,0.08)] px-4 py-2 text-sm font-semibold text-[var(--accent-blue)] disabled:opacity-50"
+              onClick={() => runRegisteredKnockoutDraw(true)}
+              className="rounded-lg border border-[rgba(255,145,0,0.35)] bg-[rgba(255,145,0,0.08)] px-4 py-2 text-sm font-semibold text-[#ffb86b] disabled:opacity-50"
             >
-              Direct 16-player Draw
+              Reset Draw
             </button>
           </div>
         </div>
 
+        {knockoutMatches.length > 0 ? (
+          <div className="rounded-2xl border border-[rgba(255,194,71,0.22)] bg-[rgba(255,194,71,0.08)] px-4 py-3 text-sm text-[var(--accent-gold)]">
+            A knockout bracket already exists. Resetting the draw will replace it.
+          </div>
+        ) : null}
+
         <p className="text-sm text-white/65">Total knockout matches: {knockoutMatches.length}</p>
 
-        {knockoutMatches.length > 0 && (
-          <div className="overflow-auto">
-            <table className="w-full min-w-[980px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-left text-white/60">
-                  <th className="px-2 py-2">Round</th>
-                  <th className="px-2 py-2">Players</th>
-                  <th className="px-2 py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {knockoutMatches.map((match) => (
-                  <tr key={match.id} className="border-b border-white/5">
-                    <td className="px-2 py-2">{match.round}</td>
-                    <td className="px-2 py-2">
-                      {formatKnockoutParticipantLabel(match.player1Id, playerNameById.get(match.player1Id))} vs {formatKnockoutParticipantLabel(match.player2Id, playerNameById.get(match.player2Id))}
-                    </td>
-                    <td className="px-2 py-2">{match.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <KnockoutBracketView
+          matches={knockoutMatches}
+          playerNameById={playerNameById}
+          emptyMessage="Generate a normal knockout draw to display the bracket here."
+          editable
+          onSaveScore={saveKnockoutScore}
+        />
       </section>
 
       <section className="panel p-6 space-y-4">
